@@ -190,11 +190,17 @@ impl<T> Matrix<T> {
     ///
     /// # Arguments
     /// * `value` - The value to fill the matrix with
-    pub fn fill(&mut self, value: T)
+    /// 
+    /// # Errors
+    /// When the length of values does not match the matrix size
+    pub fn fill(&mut self, values: &Vec<T>)
     where
         T: Copy,
     {
-        self.data.fill(value);
+        if values.len() != self.size() {
+            panic!("Fill values length does not match matrix size");
+        }
+        self.data.copy_from_slice(&values);
     }
 
     /// Fill the entire matrix with zeros.
@@ -378,6 +384,52 @@ impl<T> Matrix<T> {
             shape: self.shape.clone(),
             strides: self.strides.clone(),
         }
+    }
+}
+
+// Display implementation for Matrix visualization
+impl<T> std::fmt::Display for Matrix<T>
+where
+    T: std::fmt::Display,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Matrix{:?}[\n", self.shape)?;
+
+        if self.shape.len() == 1 {
+            // Vector case
+            write!(f, "  [")?;
+            for (i, value) in self.data.iter().enumerate() {
+                if i > 0 { write!(f, ", ")?; }
+                write!(f, "{}", value)?;
+            }
+            write!(f, "]")?;
+        } else if self.shape.len() == 2 {
+            // Matrix case
+            let rows = self.shape[0];
+            let cols = self.shape[1];
+            for row in 0..rows {
+                write!(f, "  [")?;
+                for col in 0..cols {
+                    if col > 0 { write!(f, ", ")?; }
+                    let idx = row * cols + col;
+                    write!(f, "{:8.4}", self.data[idx])?;
+                }
+                write!(f, "]{}", if row < rows - 1 { ",\n" } else { "\n" })?;
+            }
+        } else {
+            // Higher dimensions - just show shape and first few elements
+            write!(f, "  [first 5 elements: ")?;
+            for (i, value) in self.data.iter().take(5).enumerate() {
+                if i > 0 { write!(f, ", ")?; }
+                write!(f, "{}", value)?;
+            }
+            if self.data.len() > 5 {
+                write!(f, ", ...")?;
+            }
+            write!(f, "]")?;
+        }
+
+        write!(f, "\n]")
     }
 }
 

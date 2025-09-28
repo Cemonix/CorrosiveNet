@@ -1,10 +1,11 @@
 use super::{Matrix, MatrixError};
 use std::ops::{Add, Sub, Mul, Div};
+use num_traits::{Num, Float};
 
 pub trait MatrixElementwise<T> {
-    fn exp(&self) -> Matrix<T>;
-    fn log(&self) -> Matrix<T>;
-    fn sqrt(&self) -> Matrix<T>;
+    fn exp(&self) -> Matrix<T> where T: Float;
+    fn log(&self) -> Matrix<T> where T: Float;
+    fn sqrt(&self) -> Matrix<T> where T: Float;
     fn square(&self) -> Matrix<T>;
     fn clip_max(&self, threshold: T) -> Matrix<T>;
     fn clip_min(&self, threshold: T) -> Matrix<T>;
@@ -14,24 +15,71 @@ pub trait MatrixElementwise<T> {
     fn add_inplace(&mut self, other: &Matrix<T>) -> Result<(), MatrixError>;
     fn sub(&self, other: &Matrix<T>) -> Result<Matrix<T>, MatrixError>;
     fn sub_inplace(&mut self, other: &Matrix<T>) -> Result<(), MatrixError>;
+
+    // Comparison operations that return binary masks
+    fn greater_than(&self, threshold: T) -> Matrix<T>;
+    fn greater_equal(&self, threshold: T) -> Matrix<T>;
+    fn less_than(&self, threshold: T) -> Matrix<T>;
+    fn less_equal(&self, threshold: T) -> Matrix<T>;
+    fn equal(&self, threshold: T) -> Matrix<T>;
 }
 
 impl<T> MatrixElementwise<T> for Matrix<T>
 where
-    T: Copy + Add<Output = T> + Sub<Output = T> + Mul<Output = T> + Div<Output = T> + PartialOrd,
+    T: Copy + Num + PartialOrd,
 {
-    fn exp(&self) -> Matrix<T> {
-        todo!("Math functions like exp need to be implemented")
+    /// Element-wise exponential of the matrix.
+    /// 
+    /// # Returns
+    /// A new matrix with the exponential of each element
+    fn exp(&self) -> Matrix<T>
+    where
+        T: Float,
+    {
+        let data: Vec<T> = self.data.iter().map(|&x| x.exp()).collect();
+        Matrix {
+            data,
+            shape: self.shape.clone(),
+            strides: self.strides.clone(),
+        }
     }
 
-    fn log(&self) -> Matrix<T> {
-        todo!("Math functions like log need to be implemented")
+    /// Element-wise natural logarithm of the matrix.
+    /// 
+    /// # Returns
+    /// A new matrix with the natural logarithm of each element
+    fn log(&self) -> Matrix<T>
+    where
+        T: Float,
+    {
+        let data: Vec<T> = self.data.iter().map(|&x| x.ln()).collect();
+        Matrix {
+            data,
+            shape: self.shape.clone(),
+            strides: self.strides.clone(),
+        }
     }
 
-    fn sqrt(&self) -> Matrix<T> {
-        todo!("Math functions like sqrt need to be implemented")
+    /// Element-wise square root of the matrix.
+    /// 
+    /// # Returns
+    /// A new matrix with the square root of each element
+    fn sqrt(&self) -> Matrix<T>
+    where
+        T: Float,
+    {
+        let data: Vec<T> = self.data.iter().map(|&x| x.sqrt()).collect();
+        Matrix {
+            data,
+            shape: self.shape.clone(),
+            strides: self.strides.clone(),
+        }
     }
 
+    /// Element-wise square of the matrix.
+    /// 
+    /// # Returns
+    /// A new matrix with the square of each element
     fn square(&self) -> Matrix<T> {
         let data: Vec<T> = self.data.iter().map(|&x| x * x).collect();
         Matrix {
@@ -41,6 +89,13 @@ where
         }
     }
 
+    /// Clip elements of the matrix to a maximum value.
+    /// 
+    /// # Arguments
+    /// * `threshold` - The maximum value to clip to
+    /// 
+    /// # Returns
+    /// A new matrix with elements clipped to the maximum value
     fn clip_max(&self, threshold: T) -> Matrix<T> {
         let data: Vec<T> = self.data.iter().map(|&x| if x > threshold { threshold } else { x }).collect();
         Matrix {
@@ -50,6 +105,13 @@ where
         }
     }
 
+    /// Clip elements of the matrix to a minimum value.
+    /// 
+    /// # Arguments
+    /// * `threshold` - The minimum value to clip to
+    /// 
+    /// # Returns
+    /// A new matrix with elements clipped to the minimum value
     fn clip_min(&self, threshold: T) -> Matrix<T> {
         let data: Vec<T> = self.data.iter().map(|&x| if x < threshold { threshold } else { x }).collect();
         Matrix {
@@ -142,7 +204,111 @@ where
     fn sub_inplace(&mut self, other: &Matrix<T>) -> Result<(), MatrixError> {
         self.elementwise_op_inplace(other, |a, b| a - b)
     }
+
+    /// Element-wise greater than comparison.
+    ///
+    /// # Arguments
+    /// * `threshold` - Value to compare against
+    ///
+    /// # Returns
+    /// A matrix with 1 where element > threshold, 0 otherwise
+    fn greater_than(&self, threshold: T) -> Matrix<T> {
+        let zero = T::zero();
+        let one = T::one();
+        let data: Vec<T> = self.data.iter()
+            .map(|&x| if x > threshold { one } else { zero })
+            .collect();
+        Matrix {
+            data,
+            shape: self.shape.clone(),
+            strides: self.strides.clone(),
+        }
+    }
+
+    /// Element-wise greater than or equal comparison.
+    ///
+    /// # Arguments
+    /// * `threshold` - Value to compare against
+    ///
+    /// # Returns
+    /// A matrix with 1 where element >= threshold, 0 otherwise
+    fn greater_equal(&self, threshold: T) -> Matrix<T> {
+        let zero = T::zero();
+        let one = T::one();
+        let data: Vec<T> = self.data.iter()
+            .map(|&x| if x >= threshold { one } else { zero })
+            .collect();
+        Matrix {
+            data,
+            shape: self.shape.clone(),
+            strides: self.strides.clone(),
+        }
+    }
+
+    /// Element-wise less than comparison.
+    ///
+    /// # Arguments
+    /// * `threshold` - Value to compare against
+    ///
+    /// # Returns
+    /// A matrix with 1 where element < threshold, 0 otherwise
+    fn less_than(&self, threshold: T) -> Matrix<T> {
+        let zero = T::zero();
+        let one = T::one();
+        let data: Vec<T> = self.data.iter()
+            .map(|&x| if x < threshold { one } else { zero })
+            .collect();
+        Matrix {
+            data,
+            shape: self.shape.clone(),
+            strides: self.strides.clone(),
+        }
+    }
+
+    /// Element-wise less than or equal comparison.
+    ///
+    /// # Arguments
+    /// * `threshold` - Value to compare against
+    ///
+    /// # Returns
+    /// A matrix with 1 where element <= threshold, 0 otherwise
+    fn less_equal(&self, threshold: T) -> Matrix<T> {
+        let zero = T::zero();
+        let one = T::one();
+        let data: Vec<T> = self.data.iter()
+            .map(|&x| if x <= threshold { one } else { zero })
+            .collect();
+        Matrix {
+            data,
+            shape: self.shape.clone(),
+            strides: self.strides.clone(),
+        }
+    }
+
+    /// Element-wise equality comparison.
+    ///
+    /// # Arguments
+    /// * `threshold` - Value to compare against
+    ///
+    /// # Returns
+    /// A matrix with 1 where element == threshold, 0 otherwise
+    fn equal(&self, threshold: T) -> Matrix<T>
+    where
+        T: PartialEq,
+    {
+        let zero = T::zero();
+        let one = T::one();
+        let data: Vec<T> = self.data.iter()
+            .map(|&x| if x == threshold { one } else { zero })
+            .collect();
+        Matrix {
+            data,
+            shape: self.shape.clone(),
+            strides: self.strides.clone(),
+        }
+    }
 }
+
 
 #[cfg(test)]
 mod tests {

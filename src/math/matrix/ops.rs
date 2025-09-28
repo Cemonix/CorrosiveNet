@@ -7,6 +7,8 @@ pub trait MatrixOps<T> {
     fn sub(&self, other: &Matrix<T>) -> Result<Matrix<T>, MatrixError>;
     fn sub_inplace(&mut self, other: &Matrix<T>) -> Result<(), MatrixError>;
     fn matmul(&self, other: &Matrix<T>) -> Result<Matrix<T>, MatrixError>;
+    fn broadcast_add(&self, other: &Matrix<T>) -> Result<Matrix<T>, MatrixError>;
+    fn can_broadcast_with(&self, other: &Matrix<T>) -> bool;
 }
 
 impl<T> MatrixOps<T> for Matrix<T>
@@ -126,6 +128,135 @@ where
                 let result_idx = i * result_strides[0] + j * result_strides[1];
                 result_data[result_idx] = sum;
             }
+        }
+
+        Ok(result)
+    }
+
+    /// Check if two matrices can be broadcasted together
+    ///
+    /// # Arguments
+    /// * `other` - The matrix to check broadcasting compatibility with
+    ///
+    /// # Returns
+    /// `true` if matrices can be broadcasted, `false` otherwise
+    fn can_broadcast_with(&self, other: &Matrix<T>) -> bool {
+        let self_shape = self.shape();
+        let other_shape = other.shape();
+
+        // Start from the trailing dimensions
+        let max_dims = self_shape.len().max(other_shape.len());
+
+        for i in 0..max_dims {
+            let self_dim = if i < self_shape.len() {
+                self_shape[self_shape.len() - 1 - i]
+            } else {
+                1
+            };
+
+            let other_dim = if i < other_shape.len() {
+                other_shape[other_shape.len() - 1 - i]
+            } else {
+                1
+            };
+
+            // Dimensions are compatible if they're equal or one of them is 1
+            if self_dim != other_dim && self_dim != 1 && other_dim != 1 {
+                return false;
+            }
+        }
+
+        true
+    }
+
+    /// Perform element-wise addition with broadcasting
+    ///
+    /// # Arguments
+    /// * `other` - The matrix to add with broadcasting
+    ///
+    /// # Returns
+    /// A new matrix containing the broadcasted sum
+    ///
+    /// # Errors
+    /// When matrices cannot be broadcasted together
+    fn broadcast_add(&self, other: &Matrix<T>) -> Result<Matrix<T>, MatrixError> {
+        if !self.can_broadcast_with(other) {
+            return Err(MatrixError::new(&format!(
+                "Cannot broadcast shapes {:?} and {:?}",
+                self.shape(),
+                other.shape()
+            )));
+        }
+
+        let self_shape = self.shape();
+        let other_shape = other.shape();
+
+        // Determine the result shape (element-wise maximum of each dimension)
+        let max_dims = self_shape.len().max(other_shape.len());
+        let mut result_shape = Vec::with_capacity(max_dims);
+
+        for i in 0..max_dims {
+            let self_dim = if i < self_shape.len() {
+                self_shape[self_shape.len() - 1 - i]
+            } else {
+                1
+            };
+
+            let other_dim = if i < other_shape.len() {
+                other_shape[other_shape.len() - 1 - i]
+            } else {
+                1
+            };
+
+            result_shape.push(self_dim.max(other_dim));
+        }
+
+        result_shape.reverse();
+        let mut result = Matrix::zeros(result_shape.clone())?;
+
+        // Perform the broadcasted addition
+        let total_elements = result.size();
+        for i in 0..total_elements {
+            // Convert flat index to multi-dimensional indices
+            let mut indices = Vec::new();
+            let mut temp_i = i;
+            for &dim in result_shape.iter().rev() {
+                indices.push(temp_i % dim);
+                temp_i /= dim;
+            }
+            indices.reverse();
+
+            // Map indices to the original matrices (handling broadcasting)
+            let mut self_indices = Vec::new();
+            let mut other_indices = Vec::new();
+
+            for (idx, &result_idx) in indices.iter().enumerate() {
+                // Handle self indices
+                if idx < self_shape.len() {
+                    let self_dim = self_shape[idx];
+                    self_indices.push(if self_dim == 1 { 0 } else { result_idx });
+                } else {
+                    // This dimension doesn't exist in self, treat as broadcast from 1
+                    self_indices.push(0);
+                }
+
+                // Handle other indices
+                if idx < other_shape.len() {
+                    let other_dim = other_shape[idx];
+                    other_indices.push(if other_dim == 1 { 0 } else { result_idx });
+                } else {
+                    // This dimension doesn't exist in other, treat as broadcast from 1
+                    other_indices.push(0);
+                }
+            }
+
+            // Trim indices to match actual matrix dimensions
+            self_indices.truncate(self_shape.len());
+            other_indices.truncate(other_shape.len());
+
+            let self_val = *self.get(&self_indices)?;
+            let other_val = *other.get(&other_indices)?;
+            result.set(&indices, self_val + other_val)?;
         }
 
         Ok(result)
