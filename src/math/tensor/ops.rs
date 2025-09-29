@@ -1,103 +1,103 @@
-use super::{Matrix, MatrixError};
+use super::{Tensor, TensorError};
 use std::ops::{Add, Sub, AddAssign, Mul};
 
-pub trait MatrixOps<T> {
-    fn add(&self, other: &Matrix<T>) -> Result<Matrix<T>, MatrixError>;
-    fn add_inplace(&mut self, other: &Matrix<T>) -> Result<(), MatrixError>;
-    fn sub(&self, other: &Matrix<T>) -> Result<Matrix<T>, MatrixError>;
-    fn sub_inplace(&mut self, other: &Matrix<T>) -> Result<(), MatrixError>;
-    fn matmul(&self, other: &Matrix<T>) -> Result<Matrix<T>, MatrixError>;
-    fn broadcast_add(&self, other: &Matrix<T>) -> Result<Matrix<T>, MatrixError>;
-    fn can_broadcast_with(&self, other: &Matrix<T>) -> bool;
+pub trait TensorOps<T> {
+    fn add(&self, other: &Tensor<T>) -> Result<Tensor<T>, TensorError>;
+    fn add_inplace(&mut self, other: &Tensor<T>) -> Result<(), TensorError>;
+    fn sub(&self, other: &Tensor<T>) -> Result<Tensor<T>, TensorError>;
+    fn sub_inplace(&mut self, other: &Tensor<T>) -> Result<(), TensorError>;
+    fn matmul(&self, other: &Tensor<T>) -> Result<Tensor<T>, TensorError>;
+    fn broadcast_add(&self, other: &Tensor<T>) -> Result<Tensor<T>, TensorError>;
+    fn can_broadcast_with(&self, other: &Tensor<T>) -> bool;
 }
 
-impl<T> MatrixOps<T> for Matrix<T>
+impl<T> TensorOps<T> for Tensor<T>
 where
     T: Copy + Add<Output = T> + Sub<Output = T> + AddAssign + Mul<Output = T> + Default,
 {
-    /// Element-wise addition of two matrices.
+    /// Element-wise addition of two tensors.
     ///
     /// # Arguments
-    /// * `other` - The matrix to add to this one
+    /// * `other` - The tensor to add to this one
     ///
     /// # Returns
-    /// A new matrix containing the element-wise sum
+    /// A new tensor containing the element-wise sum
     ///
     /// # Errors
     /// When shapes do not match
-    fn add(&self, other: &Matrix<T>) -> Result<Matrix<T>, MatrixError> {
+    fn add(&self, other: &Tensor<T>) -> Result<Tensor<T>, TensorError> {
         self.elementwise_op(other, |a, b| a + b)
     }
 
-    /// In-place element-wise addition of two matrices.
+    /// In-place element-wise addition of two tensors.
     ///
     /// # Arguments
-    /// * `other` - The matrix to add to this one
+    /// * `other` - The tensor to add to this one
     ///
     /// # Returns
     /// Unit type on success
     ///
     /// # Errors
     /// When shapes do not match
-    fn add_inplace(&mut self, other: &Matrix<T>) -> Result<(), MatrixError> {
+    fn add_inplace(&mut self, other: &Tensor<T>) -> Result<(), TensorError> {
         self.elementwise_op_inplace(other, |a, b| a + b)
     }
 
-    /// Element-wise subtraction of two matrices.
+    /// Element-wise subtraction of two tensors.
     ///
     /// # Arguments
-    /// * `other` - The matrix to subtract from this one
+    /// * `other` - The tensor to subtract from this one
     ///
     /// # Returns
-    /// A new matrix containing the element-wise difference
+    /// A new tensor containing the element-wise difference
     ///
     /// # Errors
     /// When shapes do not match
-    fn sub(&self, other: &Matrix<T>) -> Result<Matrix<T>, MatrixError> {
+    fn sub(&self, other: &Tensor<T>) -> Result<Tensor<T>, TensorError> {
         self.elementwise_op(other, |a, b| a - b)
     }
 
-    /// In-place element-wise subtraction of two matrices.
+    /// In-place element-wise subtraction of two tensors.
     ///
     /// # Arguments
-    /// * `other` - The matrix to subtract from this one
+    /// * `other` - The tensor to subtract from this one
     ///
     /// # Returns
     /// Unit type on success
     ///
     /// # Errors
     /// When shapes do not match
-    fn sub_inplace(&mut self, other: &Matrix<T>) -> Result<(), MatrixError> {
+    fn sub_inplace(&mut self, other: &Tensor<T>) -> Result<(), TensorError> {
         self.elementwise_op_inplace(other, |a, b| a - b)
     }
 
-    /// Perform matrix multiplication between two 2D matrices.
+    /// Perform tensor multiplication between two 2D tensors.
     ///
-    /// Computes the matrix product C = A × B where:
-    /// - A is an m×k matrix (self)
-    /// - B is a k×n matrix (other)
-    /// - C is an m×n matrix (result)
+    /// Computes the tensor product C = A × B where:
+    /// - A is an m×k tensor (self)
+    /// - B is a k×n tensor (other)
+    /// - C is an m×n tensor (result)
     ///
     /// # Arguments
-    /// * `other` - The right-hand matrix to multiply with
+    /// * `other` - The right-hand tensor to multiply with
     ///
     /// # Returns
-    /// A new matrix containing the matrix product
+    /// A new tensor containing the tensor product
     ///
     /// # Errors
     /// Returns an error if:
-    /// - Either matrix is not 2D
+    /// - Either tensor is not 2D
     /// - The inner dimensions don't match (A.cols ≠ B.rows)
-    fn matmul(&self, other: &Matrix<T>) -> Result<Matrix<T>, MatrixError> {
+    fn matmul(&self, other: &Tensor<T>) -> Result<Tensor<T>, TensorError> {
         if self.shape().len() != 2 || other.shape().len() != 2 {
-            return Err(MatrixError::new(&format!(
-                "Matrices must be 2D, got {}D and {}D", self.shape().len(), other.shape().len()
+            return Err(TensorError::new(&format!(
+                "tensors must be 2D, got {}D and {}D", self.shape().len(), other.shape().len()
             )));
         }
 
         if self.shape()[1] != other.shape()[0] {
-            return Err(MatrixError::new(&format!(
-                "Matrix dimension mismatch: cannot multiply {}×{} with {}×{} (inner dimensions {} ≠ {})",
+            return Err(TensorError::new(&format!(
+                "Tensor dimension mismatch: cannot multiply {}×{} with {}×{} (inner dimensions {} ≠ {})",
                 self.shape()[0], self.shape()[1], other.shape()[0], other.shape()[1],
                 self.shape()[1], other.shape()[0]
             )));
@@ -108,7 +108,7 @@ where
         let inner = self.shape()[1];
 
         let result_shape = vec![rows, cols];
-        let mut result = Matrix::zeros(result_shape)?;
+        let mut result = Tensor::zeros(result_shape)?;
 
         let self_data = &self.data;
         let other_data = &other.data;
@@ -133,14 +133,14 @@ where
         Ok(result)
     }
 
-    /// Check if two matrices can be broadcasted together
+    /// Check if two tensors can be broadcasted together
     ///
     /// # Arguments
-    /// * `other` - The matrix to check broadcasting compatibility with
+    /// * `other` - The tensor to check broadcasting compatibility with
     ///
     /// # Returns
-    /// `true` if matrices can be broadcasted, `false` otherwise
-    fn can_broadcast_with(&self, other: &Matrix<T>) -> bool {
+    /// `true` if tensors can be broadcasted, `false` otherwise
+    fn can_broadcast_with(&self, other: &Tensor<T>) -> bool {
         let self_shape = self.shape();
         let other_shape = other.shape();
 
@@ -172,16 +172,16 @@ where
     /// Perform element-wise addition with broadcasting
     ///
     /// # Arguments
-    /// * `other` - The matrix to add with broadcasting
+    /// * `other` - The tensor to add with broadcasting
     ///
     /// # Returns
-    /// A new matrix containing the broadcasted sum
+    /// A new tensor containing the broadcasted sum
     ///
     /// # Errors
-    /// When matrices cannot be broadcasted together
-    fn broadcast_add(&self, other: &Matrix<T>) -> Result<Matrix<T>, MatrixError> {
+    /// When tensors cannot be broadcasted together
+    fn broadcast_add(&self, other: &Tensor<T>) -> Result<Tensor<T>, TensorError> {
         if !self.can_broadcast_with(other) {
-            return Err(MatrixError::new(&format!(
+            return Err(TensorError::new(&format!(
                 "Cannot broadcast shapes {:?} and {:?}",
                 self.shape(),
                 other.shape()
@@ -212,7 +212,7 @@ where
         }
 
         result_shape.reverse();
-        let mut result = Matrix::zeros(result_shape.clone())?;
+        let mut result = Tensor::zeros(result_shape.clone())?;
 
         // Perform the broadcasted addition
         let total_elements = result.size();
@@ -226,7 +226,7 @@ where
             }
             indices.reverse();
 
-            // Map indices to the original matrices (handling broadcasting)
+            // Map indices to the original tensors (handling broadcasting)
             let mut self_indices = Vec::new();
             let mut other_indices = Vec::new();
 
@@ -250,7 +250,7 @@ where
                 }
             }
 
-            // Trim indices to match actual matrix dimensions
+            // Trim indices to match actual tensor dimensions
             self_indices.truncate(self_shape.len());
             other_indices.truncate(other_shape.len());
 
@@ -269,8 +269,8 @@ mod tests {
 
     #[test]
     fn test_element_wise_addition() {
-        let a = Matrix::<f32>::from_data(vec![1.0, 2.0, 3.0, 4.0], vec![2, 2]).unwrap();
-        let b = Matrix::<f32>::from_data(vec![5.0, 6.0, 7.0, 8.0], vec![2, 2]).unwrap();
+        let a = Tensor::<f32>::from_data(vec![1.0, 2.0, 3.0, 4.0], vec![2, 2]).unwrap();
+        let b = Tensor::<f32>::from_data(vec![5.0, 6.0, 7.0, 8.0], vec![2, 2]).unwrap();
 
         let result = a.add(&b).unwrap();
         assert_eq!(*result.get(&[0, 0]).unwrap(), 6.0);  // 1 + 5
@@ -281,8 +281,8 @@ mod tests {
 
     #[test]
     fn test_element_wise_addition_inplace() {
-        let mut a = Matrix::<f32>::from_data(vec![1.0, 2.0, 3.0, 4.0], vec![2, 2]).unwrap();
-        let b = Matrix::<f32>::from_data(vec![5.0, 6.0, 7.0, 8.0], vec![2, 2]).unwrap();
+        let mut a = Tensor::<f32>::from_data(vec![1.0, 2.0, 3.0, 4.0], vec![2, 2]).unwrap();
+        let b = Tensor::<f32>::from_data(vec![5.0, 6.0, 7.0, 8.0], vec![2, 2]).unwrap();
 
         a.add_inplace(&b).unwrap();
         assert_eq!(*a.get(&[0, 0]).unwrap(), 6.0);
@@ -291,8 +291,8 @@ mod tests {
 
     #[test]
     fn test_element_wise_subtraction() {
-        let a = Matrix::<f32>::from_data(vec![10.0, 8.0, 6.0, 4.0], vec![2, 2]).unwrap();
-        let b = Matrix::<f32>::from_data(vec![1.0, 2.0, 3.0, 4.0], vec![2, 2]).unwrap();
+        let a = Tensor::<f32>::from_data(vec![10.0, 8.0, 6.0, 4.0], vec![2, 2]).unwrap();
+        let b = Tensor::<f32>::from_data(vec![1.0, 2.0, 3.0, 4.0], vec![2, 2]).unwrap();
 
         let result = a.sub(&b).unwrap();
         assert_eq!(*result.get(&[0, 0]).unwrap(), 9.0);  // 10 - 1
@@ -302,10 +302,10 @@ mod tests {
     }
 
     #[test]
-    fn test_matrix_multiplication_basic() {
-        // Test basic 2x2 matrix multiplication
-        let a = Matrix::<f32>::from_data(vec![1.0, 2.0, 3.0, 4.0], vec![2, 2]).unwrap();
-        let b = Matrix::<f32>::from_data(vec![5.0, 6.0, 7.0, 8.0], vec![2, 2]).unwrap();
+    fn test_tensor_multiplication_basic() {
+        // Test basic 2x2 tensor multiplication
+        let a = Tensor::<f32>::from_data(vec![1.0, 2.0, 3.0, 4.0], vec![2, 2]).unwrap();
+        let b = Tensor::<f32>::from_data(vec![5.0, 6.0, 7.0, 8.0], vec![2, 2]).unwrap();
 
         let result = a.matmul(&b).unwrap();
 
@@ -318,10 +318,10 @@ mod tests {
     }
 
     #[test]
-    fn test_matrix_multiplication_rectangular() {
+    fn test_tensor_multiplication_rectangular() {
         // Test 2x3 * 3x2 = 2x2
-        let a = Matrix::<f32>::from_data(vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0], vec![2, 3]).unwrap();
-        let b = Matrix::<f32>::from_data(vec![7.0, 8.0, 9.0, 10.0, 11.0, 12.0], vec![3, 2]).unwrap();
+        let a = Tensor::<f32>::from_data(vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0], vec![2, 3]).unwrap();
+        let b = Tensor::<f32>::from_data(vec![7.0, 8.0, 9.0, 10.0, 11.0, 12.0], vec![3, 2]).unwrap();
 
         let result = a.matmul(&b).unwrap();
         assert_eq!(result.shape(), &[2, 2]);
@@ -335,13 +335,13 @@ mod tests {
     }
 
     #[test]
-    fn test_matrix_multiplication_identity() {
-        let matrix = Matrix::<f32>::from_data(vec![1.0, 2.0, 3.0, 4.0], vec![2, 2]).unwrap();
-        let identity = Matrix::<f32>::from_data(vec![1.0, 0.0, 0.0, 1.0], vec![2, 2]).unwrap();
+    fn test_tensor_multiplication_identity() {
+        let tensor = Tensor::<f32>::from_data(vec![1.0, 2.0, 3.0, 4.0], vec![2, 2]).unwrap();
+        let identity = Tensor::<f32>::from_data(vec![1.0, 0.0, 0.0, 1.0], vec![2, 2]).unwrap();
 
-        let result = matrix.matmul(&identity).unwrap();
+        let result = tensor.matmul(&identity).unwrap();
 
-        // Multiplying by identity should return the original matrix
+        // Multiplying by identity should return the original tensor
         assert_eq!(*result.get(&[0, 0]).unwrap(), 1.0);
         assert_eq!(*result.get(&[0, 1]).unwrap(), 2.0);
         assert_eq!(*result.get(&[1, 0]).unwrap(), 3.0);
@@ -349,11 +349,11 @@ mod tests {
     }
 
     #[test]
-    fn test_matrix_multiplication_zeros() {
-        let matrix = Matrix::<f32>::from_data(vec![1.0, 2.0, 3.0, 4.0], vec![2, 2]).unwrap();
-        let zeros = Matrix::<f32>::zeros(vec![2, 2]).unwrap();
+    fn test_tensor_multiplication_zeros() {
+        let tensor = Tensor::<f32>::from_data(vec![1.0, 2.0, 3.0, 4.0], vec![2, 2]).unwrap();
+        let zeros = Tensor::<f32>::zeros(vec![2, 2]).unwrap();
 
-        let result = matrix.matmul(&zeros).unwrap();
+        let result = tensor.matmul(&zeros).unwrap();
 
         // Multiplying by zeros should return all zeros
         for i in 0..2 {
@@ -364,30 +364,30 @@ mod tests {
     }
 
     #[test]
-    fn test_error_handling_matrix_multiplication() {
-        let a = Matrix::<f32>::zeros(vec![2, 3]).unwrap();
-        let b = Matrix::<f32>::zeros(vec![2, 2]).unwrap(); // Wrong inner dimension
+    fn test_error_handling_tensor_multiplication() {
+        let a = Tensor::<f32>::zeros(vec![2, 3]).unwrap();
+        let b = Tensor::<f32>::zeros(vec![2, 2]).unwrap(); // Wrong inner dimension
 
         let result = a.matmul(&b);
         assert!(result.is_err());
 
-        // Test 3D matrix (not supported)
-        let a_3d = Matrix::<f32>::zeros(vec![2, 3, 4]).unwrap();
-        let b_3d = Matrix::<f32>::zeros(vec![2, 3, 4]).unwrap();
+        // Test 3D tensor (not supported)
+        let a_3d = Tensor::<f32>::zeros(vec![2, 3, 4]).unwrap();
+        let b_3d = Tensor::<f32>::zeros(vec![2, 3, 4]).unwrap();
         let result = a_3d.matmul(&b_3d);
         assert!(result.is_err());
     }
 
     #[test]
     fn test_error_handling_element_wise_operations() {
-        let a = Matrix::<f32>::zeros(vec![2, 3]).unwrap();
-        let b = Matrix::<f32>::zeros(vec![3, 2]).unwrap(); // Different shape
+        let a = Tensor::<f32>::zeros(vec![2, 3]).unwrap();
+        let b = Tensor::<f32>::zeros(vec![3, 2]).unwrap(); // Different shape
 
         // Test shape mismatch
         let result = a.add(&b);
         assert!(result.is_err());
 
-        let mut a_mut = Matrix::<f32>::zeros(vec![2, 3]).unwrap();
+        let mut a_mut = Tensor::<f32>::zeros(vec![2, 3]).unwrap();
         let result = a_mut.add_inplace(&b);
         assert!(result.is_err());
     }

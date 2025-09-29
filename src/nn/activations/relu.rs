@@ -1,6 +1,6 @@
 use num_traits::Num;
 
-use crate::{math::{Matrix, MatrixError, MatrixElementwise}, nn::Activation};
+use crate::{math::{Tensor, TensorError, TensorElementwise}, nn::Activation};
 
 pub struct ReLU;
 
@@ -14,13 +14,13 @@ impl<T> Activation<T> for ReLU
 where
     T: Clone + Default + PartialOrd + From<u8> + Copy + Num,
 {
-    fn forward(&self, input: &Matrix<T>) -> Result<Matrix<T>, MatrixError> {
+    fn forward(&self, input: &Tensor<T>) -> Result<Tensor<T>, TensorError> {
         // Apply ReLU: max(0, x) using clip_min
         let zero = T::from(0u8);
         Ok(input.clip_min(zero))
     }
 
-    fn backward(&self, input: &Matrix<T>, grad_output: &Matrix<T>) -> Result<Matrix<T>, MatrixError> {
+    fn backward(&self, input: &Tensor<T>, grad_output: &Tensor<T>) -> Result<Tensor<T>, TensorError> {
         // ReLU derivative: 1 if x > 0, else 0
         // grad_input = grad_output * (input > 0)
 

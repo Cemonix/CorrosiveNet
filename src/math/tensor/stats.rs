@@ -1,25 +1,25 @@
-use super::{Matrix, MatrixError};
+use super::{Tensor, TensorError};
 use std::ops::{Add, Div};
 
-pub trait MatrixStats<T> {
-    fn sum(&self) -> Result<T, MatrixError>;
-    fn mean(&self) -> Result<T, MatrixError> where T: From<usize>;
-    fn max(&self) -> Result<T, MatrixError>;
-    fn min(&self) -> Result<T, MatrixError>;
+pub trait TensorStats<T> {
+    fn sum(&self) -> Result<T, TensorError>;
+    fn mean(&self) -> Result<T, TensorError> where T: From<usize>;
+    fn max(&self) -> Result<T, TensorError>;
+    fn min(&self) -> Result<T, TensorError>;
 }
 
-impl<T> MatrixStats<T> for Matrix<T>
+impl<T> TensorStats<T> for Tensor<T>
 where
     T: Copy + Default + Add<Output = T> + Div<Output = T> + PartialOrd,
 {
-    /// Calculate the sum of all elements in the matrix.
+    /// Calculate the sum of all elements in the tensor.
     /// 
     /// # Returns
     /// The sum of all elements as type T.
     /// 
     /// # Errors
-    /// Returns MatrixError if the matrix is empty.
-    fn sum(&self) -> Result<T, MatrixError> {
+    /// Returns TensorError if the tensor is empty.
+    fn sum(&self) -> Result<T, TensorError> {
         let mut total = T::default();
         for item in &self.data {
             total = total + *item;
@@ -27,19 +27,19 @@ where
         Ok(total)
     }
 
-    /// Calculate the mean (average) of all elements in the matrix.
+    /// Calculate the mean (average) of all elements in the tensor.
     ///
     /// # Returns
     /// The mean of all elements as type T.
     ///
     /// # Errors
-    /// Returns MatrixError if the matrix is empty.
-    fn mean(&self) -> Result<T, MatrixError>
+    /// Returns TensorError if the tensor is empty.
+    fn mean(&self) -> Result<T, TensorError>
     where
         T: From<usize>,
     {
         if self.data.is_empty() {
-            return Err(MatrixError::new("Cannot compute mean of empty matrix"));
+            return Err(TensorError::new("Cannot compute mean of empty tensor"));
         }
 
         let sum = self.sum()?;
@@ -47,10 +47,10 @@ where
         Ok(sum / T::from(count))
     }
 
-    /// Calculate the minimum value in the matrix.
-    fn min(&self) -> Result<T, MatrixError> {
+    /// Calculate the minimum value in the tensor.
+    fn min(&self) -> Result<T, TensorError> {
         if self.data.is_empty() {
-            return Err(MatrixError::new("Cannot compute min of empty matrix"));
+            return Err(TensorError::new("Cannot compute min of empty tensor"));
         }
 
         let mut min = self.data[0];
@@ -62,10 +62,10 @@ where
         Ok(min)
     }
 
-    /// Calculate the maximum value in the matrix.
-    fn max(&self) -> Result<T, MatrixError> {
+    /// Calculate the maximum value in the tensor.
+    fn max(&self) -> Result<T, TensorError> {
         if self.data.is_empty() {
-            return Err(MatrixError::new("Cannot compute max of empty matrix"));
+            return Err(TensorError::new("Cannot compute max of empty tensor"));
         }
 
         let mut max = self.data[0];
@@ -84,35 +84,35 @@ mod tests {
 
     #[test]
     fn test_sum() {
-        let matrix = Matrix::<usize>::from_data(vec![1, 2, 3, 4], vec![2, 2]).unwrap();
-        let sum = matrix.sum().unwrap();
+        let tensor = Tensor::<usize>::from_data(vec![1, 2, 3, 4], vec![2, 2]).unwrap();
+        let sum = tensor.sum().unwrap();
         assert_eq!(sum, 10);
     }
 
     #[test]
     fn test_mean() {
-        let matrix = Matrix::<usize>::from_data(vec![2, 4, 6, 8], vec![2, 2]).unwrap();
-        let mean = matrix.mean().unwrap();
+        let tensor = Tensor::<usize>::from_data(vec![2, 4, 6, 8], vec![2, 2]).unwrap();
+        let mean = tensor.mean().unwrap();
         assert_eq!(mean, 5); // (2+4+6+8)/4 = 20/4 = 5
     }
 
     #[test]
     fn test_min() {
-        let matrix = Matrix::<usize>::from_data(vec![1, 2, 3, 4], vec![2, 2]).unwrap();
-        let min = matrix.min().unwrap();
+        let tensor = Tensor::<usize>::from_data(vec![1, 2, 3, 4], vec![2, 2]).unwrap();
+        let min = tensor.min().unwrap();
         assert_eq!(min, 1);
     }
 
     #[test]
     fn test_max() {
-        let matrix = Matrix::<usize>::from_data(vec![1, 2, 3, 4], vec![2, 2]).unwrap();
-        let max = matrix.max().unwrap();
+        let tensor = Tensor::<usize>::from_data(vec![1, 2, 3, 4], vec![2, 2]).unwrap();
+        let max = tensor.max().unwrap();
         assert_eq!(max, 4);
     }
 
     #[test]
     fn test_stats_single_element() {
-        let single_element = Matrix::<usize>::from_data(vec![42], vec![1]).unwrap();
+        let single_element = Tensor::<usize>::from_data(vec![42], vec![1]).unwrap();
         assert_eq!(single_element.sum().unwrap(), 42);
         assert_eq!(single_element.mean().unwrap(), 42);
         assert_eq!(single_element.min().unwrap(), 42);

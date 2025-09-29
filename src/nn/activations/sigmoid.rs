@@ -1,4 +1,4 @@
-use crate::{math::{Matrix, MatrixError, MatrixElementwise, MatrixScalar}, nn::Activation};
+use crate::{math::{Tensor, TensorError, TensorElementwise, TensorScalar}, nn::Activation};
 use num_traits::{Float, Num, One};
 
 pub struct Sigmoid;
@@ -13,7 +13,7 @@ impl<T> Activation<T> for Sigmoid
 where
     T: Clone + Copy + Float + One + Default + From<u8> + Num + PartialOrd,
 {
-    fn forward(&self, input: &Matrix<T>) -> Result<Matrix<T>, MatrixError> {
+    fn forward(&self, input: &Tensor<T>) -> Result<Tensor<T>, TensorError> {
         // Apply sigmoid: 1 / (1 + exp(-x))
 
         // First compute -x
@@ -23,15 +23,15 @@ where
         let exp_neg_input = neg_input.exp();
 
         // Then compute 1 + exp(-x)
-        let ones = Matrix::ones(input.shape().to_vec())?;
+        let ones = Tensor::ones(input.shape().to_vec())?;
         let one_plus_exp = ones.add(&exp_neg_input)?;
 
         // Finally compute 1 / (1 + exp(-x))
-        let ones_again = Matrix::ones(input.shape().to_vec())?;
+        let ones_again = Tensor::ones(input.shape().to_vec())?;
         ones_again.elementwise_div(&one_plus_exp)
     }
 
-    fn backward(&self, input: &Matrix<T>, grad_output: &Matrix<T>) -> Result<Matrix<T>, MatrixError> {
+    fn backward(&self, input: &Tensor<T>, grad_output: &Tensor<T>) -> Result<Tensor<T>, TensorError> {
         // Sigmoid derivative: sigmoid(x) * (1 - sigmoid(x))
         // grad_input = grad_output * sigmoid(x) * (1 - sigmoid(x))
 
@@ -39,7 +39,7 @@ where
         let sigmoid_x = self.forward(input)?;
 
         // Compute (1 - sigmoid(x))
-        let ones = Matrix::ones(input.shape().to_vec())?;
+        let ones = Tensor::ones(input.shape().to_vec())?;
         let one_minus_sigmoid = ones.sub(&sigmoid_x)?;
 
         // Compute sigmoid(x) * (1 - sigmoid(x))
