@@ -2,7 +2,7 @@ use rand_distr::{Distribution, Uniform as RandUniform, Normal as RandNormal};
 use rand::rngs::StdRng;
 use rand::SeedableRng;
 use num_traits::NumCast;
-pub use crate::math::{Matrix, MatrixError};
+pub use crate::math::{Tensor, TensorError};
 
 #[derive(Debug, Clone)]
 pub enum InitializerType {
@@ -86,7 +86,7 @@ impl Initializer {
     /// - Matrix dimensions are incompatible with the initialization type
     /// - Distribution creation fails
     /// - Matrix filling fails
-    pub fn initialize<T>(&self, matrix: &mut Matrix<T>) -> Result<(), MatrixError>
+    pub fn initialize<T>(&self, matrix: &mut Tensor<T>) -> Result<(), TensorError>
     where
         T: Copy + NumCast,
     {
@@ -107,93 +107,93 @@ impl Initializer {
         Ok(())
     }
 
-    fn sample_values<T>(&self, shape: &[usize], count: usize, rng: &mut StdRng) -> Result<Vec<T>, MatrixError>
+    fn sample_values<T>(&self, shape: &[usize], count: usize, rng: &mut StdRng) -> Result<Vec<T>, TensorError>
     where
         T: Copy + NumCast,
     {
         match &self.init_type {
             InitializerType::XavierUniform => {
                 if shape.len() != 2 {
-                    return Err(MatrixError::new("Xavier uniform initialization requires a 2D matrix"));
+                    return Err(TensorError::new("Xavier uniform initialization requires a 2D matrix"));
                 }
                 let fan_in = shape[0];
                 let fan_out = shape[1];
                 let limit = (6.0 / (fan_in + fan_out) as f64).sqrt();
 
                 let uniform = RandUniform::new(-limit, limit)
-                    .map_err(|e| MatrixError::new(&format!("Failed to create uniform distribution: {}", e)))?;
+                    .map_err(|e| TensorError::new(&format!("Failed to create uniform distribution: {}", e)))?;
                 let values = (0..count)
                     .map(|_| NumCast::from(uniform.sample(rng))
-                    .ok_or_else(|| MatrixError::new("Failed to convert sample to target type")))
+                    .ok_or_else(|| TensorError::new("Failed to convert sample to target type")))
                     .collect::<Result<Vec<_>, _>>()?;
                 Ok(values)
             },
 
             InitializerType::XavierNormal => {
                 if shape.len() != 2 {
-                    return Err(MatrixError::new("Xavier normal initialization requires a 2D matrix"));
+                    return Err(TensorError::new("Xavier normal initialization requires a 2D matrix"));
                 }
                 let fan_in = shape[0];
                 let fan_out = shape[1];
                 let std_dev = (2.0 / (fan_in + fan_out) as f64).sqrt();
 
                 let normal = RandNormal::new(0.0, std_dev)
-                    .map_err(|e| MatrixError::new(&format!("Failed to create normal distribution: {}", e)))?;
+                    .map_err(|e| TensorError::new(&format!("Failed to create normal distribution: {}", e)))?;
                 let values = (0..count)
                     .map(|_| NumCast::from(normal.sample(rng))
-                    .ok_or_else(|| MatrixError::new("Failed to convert sample to target type")))
+                    .ok_or_else(|| TensorError::new("Failed to convert sample to target type")))
                     .collect::<Result<Vec<_>, _>>()?;
                 Ok(values)
             },
 
             InitializerType::HeUniform => {
                 if shape.len() != 2 {
-                    return Err(MatrixError::new("He uniform initialization requires a 2D matrix"));
+                    return Err(TensorError::new("He uniform initialization requires a 2D matrix"));
                 }
                 let fan_in = shape[0];
                 let limit = (6.0 / fan_in as f64).sqrt();
 
                 let uniform = RandUniform::new(-limit, limit)
-                    .map_err(|e| MatrixError::new(&format!("Failed to create uniform distribution: {}", e)))?;
+                    .map_err(|e| TensorError::new(&format!("Failed to create uniform distribution: {}", e)))?;
                 let values = (0..count)
                     .map(|_| NumCast::from(uniform.sample(rng))
-                    .ok_or_else(|| MatrixError::new("Failed to convert sample to target type")))
+                    .ok_or_else(|| TensorError::new("Failed to convert sample to target type")))
                     .collect::<Result<Vec<_>, _>>()?;
                 Ok(values)
             },
 
             InitializerType::HeNormal => {
                 if shape.len() != 2 {
-                    return Err(MatrixError::new("He normal initialization requires a 2D matrix"));
+                    return Err(TensorError::new("He normal initialization requires a 2D matrix"));
                 }
                 let fan_in = shape[0];
                 let std_dev = (2.0 / fan_in as f64).sqrt();
 
                 let normal = RandNormal::new(0.0, std_dev)
-                    .map_err(|e| MatrixError::new(&format!("Failed to create normal distribution: {}", e)))?;
+                    .map_err(|e| TensorError::new(&format!("Failed to create normal distribution: {}", e)))?;
                 let values = (0..count)
                     .map(|_| NumCast::from(normal.sample(rng))
-                    .ok_or_else(|| MatrixError::new("Failed to convert sample to target type")))
+                    .ok_or_else(|| TensorError::new("Failed to convert sample to target type")))
                     .collect::<Result<Vec<_>, _>>()?;
                 Ok(values)
             },
 
             InitializerType::Normal { mean, std } => {
                 let normal = RandNormal::new(*mean, *std)
-                    .map_err(|e| MatrixError::new(&format!("Failed to create normal distribution: {}", e)))?;
+                    .map_err(|e| TensorError::new(&format!("Failed to create normal distribution: {}", e)))?;
                 let values = (0..count)
                     .map(|_| NumCast::from(normal.sample(rng))
-                    .ok_or_else(|| MatrixError::new("Failed to convert sample to target type")))
+                    .ok_or_else(|| TensorError::new("Failed to convert sample to target type")))
                     .collect::<Result<Vec<_>, _>>()?;
                 Ok(values)
             },
 
             InitializerType::Uniform { low, high } => {
                 let uniform = RandUniform::new(*low, *high)
-                    .map_err(|e| MatrixError::new(&format!("Failed to create uniform distribution: {}", e)))?;
+                    .map_err(|e| TensorError::new(&format!("Failed to create uniform distribution: {}", e)))?;
                 let values = (0..count)
                     .map(|_| NumCast::from(uniform.sample(rng))
-                    .ok_or_else(|| MatrixError::new("Failed to convert sample to target type")))
+                    .ok_or_else(|| TensorError::new("Failed to convert sample to target type")))
                     .collect::<Result<Vec<_>, _>>()?;
                 Ok(values)
             },

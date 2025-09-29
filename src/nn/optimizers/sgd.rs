@@ -1,6 +1,6 @@
 use std::ops::{Add, AddAssign, Div, Mul, Sub};
 
-use crate::math::{Matrix, MatrixError, MatrixScalar, MatrixOps};
+use crate::math::{Tensor, TensorError, TensorScalar, TensorOps};
 use super::Optimizer;
 
 pub struct SGD<T> {
@@ -20,9 +20,9 @@ impl<T> Optimizer<T> for SGD<T>
 where
     T: Clone + Copy + Default + Add<Output = T> + Sub<Output = T> + AddAssign + Mul<Output = T> + Div<Output = T>,
 {
-    fn step(&mut self, parameters: &mut [&mut Matrix<T>], gradients: &[&Matrix<T>]) -> Result<(), MatrixError> {
+    fn step(&mut self, parameters: &mut [&mut Tensor<T>], gradients: &[&Tensor<T>]) -> Result<(), TensorError> {
         if parameters.len() != gradients.len() {
-            return Err(MatrixError::new("Parameters and gradients must have the same length"));
+            return Err(TensorError::new("Parameters and gradients must have the same length"));
         }
 
         for (param, grad) in parameters.iter_mut().zip(gradients.iter()) {
@@ -34,7 +34,7 @@ where
         Ok(())
     }
 
-    fn zero_grad(&mut self, gradients: &mut [&mut Matrix<T>]) -> Result<(), MatrixError> {
+    fn zero_grad(&mut self, gradients: &mut [&mut Tensor<T>]) -> Result<(), TensorError> {
         for grad in gradients.iter_mut() {
             // Set all gradients to zero
             grad.fill_zeros();

@@ -2,7 +2,7 @@ mod math;
 mod nn;
 mod trainer;
 
-use math::{Matrix, MatrixOps, MatrixScalar};
+use math::{Tensor, TensorOps, TensorScalar};
 use nn::{
     layers::Linear,
     activations::ReLU,
@@ -11,12 +11,12 @@ use nn::{
     Layer, Activation, LossFunction, Optimizer,
 };
 
-fn main() -> Result<(), math::MatrixError> {
+fn main() -> Result<(), math::TensorError> {
     println!("🚀 CorrosiveNet - First Neural Network Training!");
 
     // Create simple regression data: y = 2*x + 1
-    let input_data = Matrix::<f32>::from_data(vec![1.0, 2.0, 3.0, 4.0], vec![4, 1])?;
-    let target_data = Matrix::<f32>::from_data(vec![3.0, 5.0, 7.0, 9.0], vec![4, 1])?;
+    let input_data = Tensor::<f32>::from_data(vec![1.0, 2.0, 3.0, 4.0], vec![4, 1])?;
+    let target_data = Tensor::<f32>::from_data(vec![3.0, 5.0, 7.0, 9.0], vec![4, 1])?;
 
     // Create network components
     let mut layer = Linear::<f32>::new(1, 1)?; // 1 input -> 1 output

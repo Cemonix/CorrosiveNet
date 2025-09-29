@@ -1,12 +1,20 @@
-pub mod matrix;
+pub mod tensor;
 
-pub use matrix::{
-    Matrix, 
-    MatrixError,
-    Dims,
-    MatrixShape,
-    MatrixElementwise,
-    MatrixScalar,
-    MatrixStats,
-    MatrixOps
+pub use tensor::{
+    Tensor,
+    TensorError,
+
+    TensorElement, TensorNum, TensorSigned, TensorFloat, TensorBool,
+
+    TensorCore,
+    TensorStorage,
+    TensorDims,
+    TensorShape,
+    TensorScalar,
+    TensorStats,
+    TensorMask,
+    TensorLinearAlgebra,
+    TensorArithmetic,
+    TensorMath,
+    TensorComparison
 };

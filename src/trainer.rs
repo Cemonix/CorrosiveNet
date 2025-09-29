@@ -1,5 +1,5 @@
 use crate::{
-    math::{Matrix, MatrixError},
+    math::{Tensor, TensorError},
     nn::{
         Layer, Optimizer, LossFunction, Activation,
         layers::Linear,
@@ -60,9 +60,9 @@ where
         activation: &A,
         loss_fn: &Loss,
         optimizer: &mut Opt,
-        train_data: &Matrix<T>,
-        train_targets: &Matrix<T>,
-    ) -> Result<(), MatrixError>
+        train_data: &Tensor<T>,
+        train_targets: &Tensor<T>,
+    ) -> Result<(), TensorError>
     where
         L: Layer<T>,
         A: Activation<T>,
@@ -136,7 +136,7 @@ where
     }
 
     /// Build the linear layer with the specified configuration
-    pub fn build_linear(self) -> Result<Linear<T>, MatrixError> {
+    pub fn build_linear(self) -> Result<Linear<T>, TensorError> {
         let mut layer = Linear::new(self.input_size, self.output_size)?;
 
         // TODO: Use the initializer to initialize weights

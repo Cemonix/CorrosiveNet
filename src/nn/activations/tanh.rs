@@ -1,4 +1,4 @@
-use crate::{math::{Matrix, MatrixError, MatrixElementwise, MatrixScalar}, nn::Activation};
+use crate::{math::{Tensor, TensorError, TensorElementwise, TensorScalar}, nn::Activation};
 use num_traits::{Float, Num, One};
 
 pub struct Tanh;
@@ -13,7 +13,7 @@ impl<T> Activation<T> for Tanh
 where
     T: Clone + Copy + Float + One + Default + From<u8> + Num + PartialOrd,
 {
-    fn forward(&self, input: &Matrix<T>) -> Result<Matrix<T>, MatrixError> {
+    fn forward(&self, input: &Tensor<T>) -> Result<Tensor<T>, TensorError> {
         // Apply tanh: (exp(x) - exp(-x)) / (exp(x) + exp(-x))
 
         // Compute exp(x)
@@ -33,7 +33,7 @@ where
         numerator.elementwise_div(&denominator)
     }
 
-    fn backward(&self, input: &Matrix<T>, grad_output: &Matrix<T>) -> Result<Matrix<T>, MatrixError> {
+    fn backward(&self, input: &Tensor<T>, grad_output: &Tensor<T>) -> Result<Tensor<T>, TensorError> {
         // Tanh derivative: 1 - tanh^2(x)
         // grad_input = grad_output * (1 - tanh^2(x))
 
@@ -44,7 +44,7 @@ where
         let tanh_squared = tanh_x.square();
 
         // Compute (1 - tanh^2(x))
-        let ones = Matrix::ones(input.shape().to_vec())?;
+        let ones = Tensor::ones(input.shape().to_vec())?;
         let tanh_derivative = ones.sub(&tanh_squared)?;
 
         // Compute grad_output * tanh_derivative
