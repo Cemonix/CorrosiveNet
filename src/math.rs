@@ -1,12 +1,20 @@
 pub mod tensor;
 
 pub use tensor::{
-    Tensor, 
+    Tensor,
     TensorError,
-    Dims,
+
+    TensorElement, TensorNum, TensorSigned, TensorFloat, TensorBool,
+
+    TensorCore,
+    TensorStorage,
+    TensorDims,
     TensorShape,
-    TensorElementwise,
     TensorScalar,
     TensorStats,
-    TensorOps
+    TensorMask,
+    TensorLinearAlgebra,
+    TensorArithmetic,
+    TensorMath,
+    TensorComparison
 };

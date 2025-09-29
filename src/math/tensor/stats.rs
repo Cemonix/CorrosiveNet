@@ -1,5 +1,4 @@
-use super::{Tensor, TensorError};
-use std::ops::{Add, Div};
+use super::{Tensor, TensorError, TensorCore, TensorNum};
 
 pub trait TensorStats<T> {
     fn sum(&self) -> Result<T, TensorError>;
@@ -10,7 +9,7 @@ pub trait TensorStats<T> {
 
 impl<T> TensorStats<T> for Tensor<T>
 where
-    T: Copy + Default + Add<Output = T> + Div<Output = T> + PartialOrd,
+    T: TensorNum,
 {
     /// Calculate the sum of all elements in the tensor.
     /// 
@@ -20,11 +19,7 @@ where
     /// # Errors
     /// Returns TensorError if the tensor is empty.
     fn sum(&self) -> Result<T, TensorError> {
-        let mut total = T::default();
-        for item in &self.data {
-            total = total + *item;
-        }
-        Ok(total)
+        Ok(self.data.iter().copied().fold(T::zero(), |acc, x| acc + x))
     }
 
     /// Calculate the mean (average) of all elements in the tensor.
@@ -48,39 +43,52 @@ where
     }
 
     /// Calculate the minimum value in the tensor.
+    ///
+    /// # Returns
+    /// The smallest element in the tensor
+    ///
+    /// # Errors
+    /// When the tensor is empty
     fn min(&self) -> Result<T, TensorError> {
         if self.data.is_empty() {
             return Err(TensorError::new("Cannot compute min of empty tensor"));
         }
 
-        let mut min = self.data[0];
-        for &item in &self.data[1..] {
-            if item < min {
-                min = item;
+        let mut min_val = self.data[0];
+        for &val in &self.data[1..] {
+            if val < min_val {
+                min_val = val;
             }
         }
-        Ok(min)
+        Ok(min_val)
     }
 
     /// Calculate the maximum value in the tensor.
+    ///
+    /// # Returns
+    /// The largest element in the tensor
+    ///
+    /// # Errors
+    /// When the tensor is empty
     fn max(&self) -> Result<T, TensorError> {
         if self.data.is_empty() {
             return Err(TensorError::new("Cannot compute max of empty tensor"));
         }
 
-        let mut max = self.data[0];
-        for &item in &self.data[1..] {
-            if item > max {
-                max = item;
+        let mut max_val = self.data[0];
+        for &val in &self.data[1..] {
+            if val > max_val {
+                max_val = val;
             }
         }
-        Ok(max)
+        Ok(max_val)
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use crate::math::tensor::{Tensor, TensorStorage, TensorStats};
+
 
     #[test]
     fn test_sum() {

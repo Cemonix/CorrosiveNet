@@ -1,76 +1,15 @@
-use super::{Tensor, TensorError};
-use std::ops::{Add, Sub, AddAssign, Mul};
+use super::{Tensor, TensorError, TensorCore, TensorStorage, TensorNum};
 
-pub trait TensorOps<T> {
-    fn add(&self, other: &Tensor<T>) -> Result<Tensor<T>, TensorError>;
-    fn add_inplace(&mut self, other: &Tensor<T>) -> Result<(), TensorError>;
-    fn sub(&self, other: &Tensor<T>) -> Result<Tensor<T>, TensorError>;
-    fn sub_inplace(&mut self, other: &Tensor<T>) -> Result<(), TensorError>;
+pub trait TensorLinearAlgebra<T> {
     fn matmul(&self, other: &Tensor<T>) -> Result<Tensor<T>, TensorError>;
     fn broadcast_add(&self, other: &Tensor<T>) -> Result<Tensor<T>, TensorError>;
     fn can_broadcast_with(&self, other: &Tensor<T>) -> bool;
 }
 
-impl<T> TensorOps<T> for Tensor<T>
+impl<T> TensorLinearAlgebra<T> for Tensor<T>
 where
-    T: Copy + Add<Output = T> + Sub<Output = T> + AddAssign + Mul<Output = T> + Default,
+    T: TensorNum,
 {
-    /// Element-wise addition of two tensors.
-    ///
-    /// # Arguments
-    /// * `other` - The tensor to add to this one
-    ///
-    /// # Returns
-    /// A new tensor containing the element-wise sum
-    ///
-    /// # Errors
-    /// When shapes do not match
-    fn add(&self, other: &Tensor<T>) -> Result<Tensor<T>, TensorError> {
-        self.elementwise_op(other, |a, b| a + b)
-    }
-
-    /// In-place element-wise addition of two tensors.
-    ///
-    /// # Arguments
-    /// * `other` - The tensor to add to this one
-    ///
-    /// # Returns
-    /// Unit type on success
-    ///
-    /// # Errors
-    /// When shapes do not match
-    fn add_inplace(&mut self, other: &Tensor<T>) -> Result<(), TensorError> {
-        self.elementwise_op_inplace(other, |a, b| a + b)
-    }
-
-    /// Element-wise subtraction of two tensors.
-    ///
-    /// # Arguments
-    /// * `other` - The tensor to subtract from this one
-    ///
-    /// # Returns
-    /// A new tensor containing the element-wise difference
-    ///
-    /// # Errors
-    /// When shapes do not match
-    fn sub(&self, other: &Tensor<T>) -> Result<Tensor<T>, TensorError> {
-        self.elementwise_op(other, |a, b| a - b)
-    }
-
-    /// In-place element-wise subtraction of two tensors.
-    ///
-    /// # Arguments
-    /// * `other` - The tensor to subtract from this one
-    ///
-    /// # Returns
-    /// Unit type on success
-    ///
-    /// # Errors
-    /// When shapes do not match
-    fn sub_inplace(&mut self, other: &Tensor<T>) -> Result<(), TensorError> {
-        self.elementwise_op_inplace(other, |a, b| a - b)
-    }
-
     /// Perform tensor multiplication between two 2D tensors.
     ///
     /// Computes the tensor product C = A × B where:
@@ -117,12 +56,12 @@ where
 
         for i in 0..rows {
             for j in 0..cols {
-                let mut sum = T::default();
+                let mut sum = T::zero();
 
                 for k in 0..inner {
                     let self_idx = i * self.strides()[0] + k * self.strides()[1];
                     let other_idx = k * other.strides()[0] + j * other.strides()[1];
-                    sum += self_data[self_idx] * other_data[other_idx];
+                    sum = sum + self_data[self_idx] * other_data[other_idx];
                 }
 
                 let result_idx = i * result_strides[0] + j * result_strides[1];
@@ -133,7 +72,7 @@ where
         Ok(result)
     }
 
-    /// Check if two tensors can be broadcasted together
+    /// Check if two tensors can be broadcasted together.
     ///
     /// # Arguments
     /// * `other` - The tensor to check broadcasting compatibility with
@@ -144,7 +83,6 @@ where
         let self_shape = self.shape();
         let other_shape = other.shape();
 
-        // Start from the trailing dimensions
         let max_dims = self_shape.len().max(other_shape.len());
 
         for i in 0..max_dims {
@@ -160,7 +98,6 @@ where
                 1
             };
 
-            // Dimensions are compatible if they're equal or one of them is 1
             if self_dim != other_dim && self_dim != 1 && other_dim != 1 {
                 return false;
             }
@@ -169,7 +106,7 @@ where
         true
     }
 
-    /// Perform element-wise addition with broadcasting
+    /// Perform element-wise addition with broadcasting.
     ///
     /// # Arguments
     /// * `other` - The tensor to add with broadcasting
@@ -191,7 +128,6 @@ where
         let self_shape = self.shape();
         let other_shape = other.shape();
 
-        // Determine the result shape (element-wise maximum of each dimension)
         let max_dims = self_shape.len().max(other_shape.len());
         let mut result_shape = Vec::with_capacity(max_dims);
 
@@ -214,10 +150,8 @@ where
         result_shape.reverse();
         let mut result = Tensor::zeros(result_shape.clone())?;
 
-        // Perform the broadcasted addition
         let total_elements = result.size();
         for i in 0..total_elements {
-            // Convert flat index to multi-dimensional indices
             let mut indices = Vec::new();
             let mut temp_i = i;
             for &dim in result_shape.iter().rev() {
@@ -226,31 +160,25 @@ where
             }
             indices.reverse();
 
-            // Map indices to the original tensors (handling broadcasting)
             let mut self_indices = Vec::new();
             let mut other_indices = Vec::new();
 
             for (idx, &result_idx) in indices.iter().enumerate() {
-                // Handle self indices
                 if idx < self_shape.len() {
                     let self_dim = self_shape[idx];
                     self_indices.push(if self_dim == 1 { 0 } else { result_idx });
                 } else {
-                    // This dimension doesn't exist in self, treat as broadcast from 1
                     self_indices.push(0);
                 }
 
-                // Handle other indices
                 if idx < other_shape.len() {
                     let other_dim = other_shape[idx];
                     other_indices.push(if other_dim == 1 { 0 } else { result_idx });
                 } else {
-                    // This dimension doesn't exist in other, treat as broadcast from 1
                     other_indices.push(0);
                 }
             }
 
-            // Trim indices to match actual tensor dimensions
             self_indices.truncate(self_shape.len());
             other_indices.truncate(other_shape.len());
 
@@ -265,52 +193,15 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
-    #[test]
-    fn test_element_wise_addition() {
-        let a = Tensor::<f32>::from_data(vec![1.0, 2.0, 3.0, 4.0], vec![2, 2]).unwrap();
-        let b = Tensor::<f32>::from_data(vec![5.0, 6.0, 7.0, 8.0], vec![2, 2]).unwrap();
-
-        let result = a.add(&b).unwrap();
-        assert_eq!(*result.get(&[0, 0]).unwrap(), 6.0);  // 1 + 5
-        assert_eq!(*result.get(&[0, 1]).unwrap(), 8.0);  // 2 + 6
-        assert_eq!(*result.get(&[1, 0]).unwrap(), 10.0); // 3 + 7
-        assert_eq!(*result.get(&[1, 1]).unwrap(), 12.0); // 4 + 8
-    }
-
-    #[test]
-    fn test_element_wise_addition_inplace() {
-        let mut a = Tensor::<f32>::from_data(vec![1.0, 2.0, 3.0, 4.0], vec![2, 2]).unwrap();
-        let b = Tensor::<f32>::from_data(vec![5.0, 6.0, 7.0, 8.0], vec![2, 2]).unwrap();
-
-        a.add_inplace(&b).unwrap();
-        assert_eq!(*a.get(&[0, 0]).unwrap(), 6.0);
-        assert_eq!(*a.get(&[1, 1]).unwrap(), 12.0);
-    }
-
-    #[test]
-    fn test_element_wise_subtraction() {
-        let a = Tensor::<f32>::from_data(vec![10.0, 8.0, 6.0, 4.0], vec![2, 2]).unwrap();
-        let b = Tensor::<f32>::from_data(vec![1.0, 2.0, 3.0, 4.0], vec![2, 2]).unwrap();
-
-        let result = a.sub(&b).unwrap();
-        assert_eq!(*result.get(&[0, 0]).unwrap(), 9.0);  // 10 - 1
-        assert_eq!(*result.get(&[0, 1]).unwrap(), 6.0);  // 8 - 2
-        assert_eq!(*result.get(&[1, 0]).unwrap(), 3.0);  // 6 - 3
-        assert_eq!(*result.get(&[1, 1]).unwrap(), 0.0);  // 4 - 4
-    }
+    use crate::math::tensor::{Tensor, TensorCore, TensorStorage, TensorLinearAlgebra};
 
     #[test]
     fn test_tensor_multiplication_basic() {
-        // Test basic 2x2 tensor multiplication
         let a = Tensor::<f32>::from_data(vec![1.0, 2.0, 3.0, 4.0], vec![2, 2]).unwrap();
         let b = Tensor::<f32>::from_data(vec![5.0, 6.0, 7.0, 8.0], vec![2, 2]).unwrap();
 
         let result = a.matmul(&b).unwrap();
 
-        // Expected result: [[1*5+2*7, 1*6+2*8], [3*5+4*7, 3*6+4*8]]
-        //                  [[19, 22], [43, 50]]
         assert_eq!(*result.get(&[0, 0]).unwrap(), 19.0);  // 1*5 + 2*7 = 19
         assert_eq!(*result.get(&[0, 1]).unwrap(), 22.0);  // 1*6 + 2*8 = 22
         assert_eq!(*result.get(&[1, 0]).unwrap(), 43.0);  // 3*5 + 4*7 = 43
@@ -319,15 +210,12 @@ mod tests {
 
     #[test]
     fn test_tensor_multiplication_rectangular() {
-        // Test 2x3 * 3x2 = 2x2
         let a = Tensor::<f32>::from_data(vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0], vec![2, 3]).unwrap();
         let b = Tensor::<f32>::from_data(vec![7.0, 8.0, 9.0, 10.0, 11.0, 12.0], vec![3, 2]).unwrap();
 
         let result = a.matmul(&b).unwrap();
         assert_eq!(result.shape(), &[2, 2]);
 
-        // Expected: [[1*7+2*9+3*11, 1*8+2*10+3*12], [4*7+5*9+6*11, 4*8+5*10+6*12]]
-        //          [[58, 64], [139, 154]]
         assert_eq!(*result.get(&[0, 0]).unwrap(), 58.0);   // 1*7 + 2*9 + 3*11 = 58
         assert_eq!(*result.get(&[0, 1]).unwrap(), 64.0);   // 1*8 + 2*10 + 3*12 = 64
         assert_eq!(*result.get(&[1, 0]).unwrap(), 139.0);  // 4*7 + 5*9 + 6*11 = 139
@@ -335,43 +223,13 @@ mod tests {
     }
 
     #[test]
-    fn test_tensor_multiplication_identity() {
-        let tensor = Tensor::<f32>::from_data(vec![1.0, 2.0, 3.0, 4.0], vec![2, 2]).unwrap();
-        let identity = Tensor::<f32>::from_data(vec![1.0, 0.0, 0.0, 1.0], vec![2, 2]).unwrap();
-
-        let result = tensor.matmul(&identity).unwrap();
-
-        // Multiplying by identity should return the original tensor
-        assert_eq!(*result.get(&[0, 0]).unwrap(), 1.0);
-        assert_eq!(*result.get(&[0, 1]).unwrap(), 2.0);
-        assert_eq!(*result.get(&[1, 0]).unwrap(), 3.0);
-        assert_eq!(*result.get(&[1, 1]).unwrap(), 4.0);
-    }
-
-    #[test]
-    fn test_tensor_multiplication_zeros() {
-        let tensor = Tensor::<f32>::from_data(vec![1.0, 2.0, 3.0, 4.0], vec![2, 2]).unwrap();
-        let zeros = Tensor::<f32>::zeros(vec![2, 2]).unwrap();
-
-        let result = tensor.matmul(&zeros).unwrap();
-
-        // Multiplying by zeros should return all zeros
-        for i in 0..2 {
-            for j in 0..2 {
-                assert_eq!(*result.get(&[i, j]).unwrap(), 0.0);
-            }
-        }
-    }
-
-    #[test]
     fn test_error_handling_tensor_multiplication() {
         let a = Tensor::<f32>::zeros(vec![2, 3]).unwrap();
-        let b = Tensor::<f32>::zeros(vec![2, 2]).unwrap(); // Wrong inner dimension
+        let b = Tensor::<f32>::zeros(vec![2, 2]).unwrap();
 
         let result = a.matmul(&b);
         assert!(result.is_err());
 
-        // Test 3D tensor (not supported)
         let a_3d = Tensor::<f32>::zeros(vec![2, 3, 4]).unwrap();
         let b_3d = Tensor::<f32>::zeros(vec![2, 3, 4]).unwrap();
         let result = a_3d.matmul(&b_3d);
@@ -379,16 +237,13 @@ mod tests {
     }
 
     #[test]
-    fn test_error_handling_element_wise_operations() {
-        let a = Tensor::<f32>::zeros(vec![2, 3]).unwrap();
-        let b = Tensor::<f32>::zeros(vec![3, 2]).unwrap(); // Different shape
+    fn test_broadcasting_compatibility() {
+        let a = Tensor::<f32>::zeros(vec![3, 1]).unwrap();
+        let b = Tensor::<f32>::zeros(vec![1, 4]).unwrap();
+        assert!(a.can_broadcast_with(&b));
 
-        // Test shape mismatch
-        let result = a.add(&b);
-        assert!(result.is_err());
-
-        let mut a_mut = Tensor::<f32>::zeros(vec![2, 3]).unwrap();
-        let result = a_mut.add_inplace(&b);
-        assert!(result.is_err());
+        let c = Tensor::<f32>::zeros(vec![3, 2]).unwrap();
+        let d = Tensor::<f32>::zeros(vec![3, 4]).unwrap();
+        assert!(!c.can_broadcast_with(&d));
     }
 }

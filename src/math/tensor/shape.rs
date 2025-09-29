@@ -1,11 +1,11 @@
-use super::{Tensor, TensorError};
-use super::dim::Dims;
+use super::{Tensor, TensorError, TensorCore};
+use super::dim::TensorDims;
 
 pub trait TensorShape<T> {
     fn transpose(&self) -> Result<Tensor<T>, TensorError>;
     fn reshape(&self, new_shape: Vec<usize>) -> Result<Tensor<T>, TensorError>;
-    fn squeeze(&mut self, dims: Dims) -> Result<(), TensorError>;
-    fn unsqueeze(&mut self, dims: Dims) -> Result<(), TensorError>;
+    fn squeeze(&mut self, dims: TensorDims) -> Result<(), TensorError>;
+    fn unsqueeze(&mut self, dims: TensorDims) -> Result<(), TensorError>;
     fn permute(&self, axes: Vec<usize>) -> Result<Tensor<T>, TensorError>;
 }
 
@@ -77,7 +77,7 @@ where
             let mut new_data = Vec::with_capacity(self.size());
 
             for i in 0..self.size() {
-                let indices = self.flat_to_indices(i);
+                let indices = self.index_to_indices(i);
                 new_data.push((*self.get(&indices)?).clone());
             }
 
@@ -100,9 +100,9 @@ where
     ///
     /// # Errors
     /// When trying to squeeze dimensions that are not size 1 or would result in empty shape
-    fn squeeze(&mut self, dims: Dims) -> Result<(), TensorError> {
+    fn squeeze(&mut self, dims: TensorDims) -> Result<(), TensorError> {
         match dims {
-            Dims::All => {
+            TensorDims::All => {
                 let new_shape: Vec<usize> = self.shape.iter().filter(|&&dim| dim != 1).copied().collect();
                 if new_shape.is_empty() {
                     return Err(TensorError::new("Cannot squeeze all dimensions - would result in empty shape"));
@@ -111,7 +111,7 @@ where
                 self.strides = Tensor::<T>::calculate_strides(&self.shape);
                 Ok(())
             },
-            Dims::Single(dim) => {
+            TensorDims::Single(dim) => {
                 if dim >= self.shape.len() {
                     return Err(TensorError::new(&format!(
                         "Dimension {} is out of bounds for Tensor with {} dimensions",
@@ -131,7 +131,7 @@ where
                 self.strides = Tensor::<T>::calculate_strides(&self.shape);
                 Ok(())
             },
-            Dims::Multiple(dims_to_squeeze) => {
+            TensorDims::Multiple(dims_to_squeeze) => {
                 for &dim in &dims_to_squeeze {
                     if dim >= self.shape.len() {
                         return Err(TensorError::new(&format!(
@@ -174,12 +174,12 @@ where
     /// 
     /// # Errors
     /// When trying to unsqueeze out-of-bounds dimensions or duplicate dimensions
-    fn unsqueeze(&mut self, dims: Dims) -> Result<(), TensorError> {
+    fn unsqueeze(&mut self, dims: TensorDims) -> Result<(), TensorError> {
         match dims {
-            Dims::All => {
+            TensorDims::All => {
                 return Err(TensorError::new("Unsqueeze does not support Dims::All. Use Dims::Single or Dims::Multiple"));
             },
-            Dims::Single(dim) => {
+            TensorDims::Single(dim) => {
                 let max_dim = self.shape.len();
                 if dim > max_dim {
                     return Err(TensorError::new(&format!(
@@ -192,7 +192,7 @@ where
                 self.strides = Tensor::<T>::calculate_strides(&self.shape);
                 Ok(())
             },
-            Dims::Multiple(dims_to_unsqueeze) => {
+            TensorDims::Multiple(dims_to_unsqueeze) => {
                 let max_final_dim = self.shape.len() + dims_to_unsqueeze.len();
 
                 for &dim in &dims_to_unsqueeze {
@@ -269,7 +269,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use crate::math::tensor::{Tensor, TensorCore, TensorStorage, TensorDims, TensorShape};
 
     #[test]
     fn test_transpose() {
@@ -356,7 +356,7 @@ mod tests {
     fn test_squeeze_all_dimensions() {
         // Test squeezing all dimensions of size 1
         let mut tensor = Tensor::<f32>::from_data(vec![1.0, 2.0, 3.0, 4.0], vec![1, 2, 2, 1]).unwrap();
-        tensor.squeeze(Dims::All).unwrap();
+        tensor.squeeze(TensorDims::All).unwrap();
 
         assert_eq!(tensor.shape(), &[2, 2]);
         assert_eq!(*tensor.get(&[0, 0]).unwrap(), 1.0);
@@ -366,7 +366,7 @@ mod tests {
     #[test]
     fn test_squeeze_single_dimension() {
         let mut tensor = Tensor::<f32>::from_data(vec![1.0, 2.0, 3.0, 4.0], vec![1, 2, 2]).unwrap();
-        tensor.squeeze(Dims::Single(0)).unwrap();
+        tensor.squeeze(TensorDims::Single(0)).unwrap();
 
         assert_eq!(tensor.shape(), &[2, 2]);
         assert_eq!(*tensor.get(&[0, 0]).unwrap(), 1.0);
@@ -376,7 +376,7 @@ mod tests {
     #[test]
     fn test_squeeze_multiple_dimensions() {
         let mut tensor = Tensor::<f32>::from_data(vec![1.0, 2.0, 3.0, 4.0], vec![1, 2, 1, 2]).unwrap();
-        tensor.squeeze(Dims::Multiple(vec![0, 2])).unwrap();
+        tensor.squeeze(TensorDims::Multiple(vec![0, 2])).unwrap();
 
         assert_eq!(tensor.shape(), &[2, 2]);
         assert_eq!(*tensor.get(&[0, 0]).unwrap(), 1.0);
@@ -387,21 +387,21 @@ mod tests {
     fn test_unsqueeze_single_dimension() {
         // Add dimension at the beginning
         let mut tensor1 = Tensor::<f32>::from_data(vec![1.0, 2.0, 3.0, 4.0], vec![2, 2]).unwrap();
-        tensor1.unsqueeze(Dims::Single(0)).unwrap();
+        tensor1.unsqueeze(TensorDims::Single(0)).unwrap();
         assert_eq!(tensor1.shape(), &[1, 2, 2]);
         assert_eq!(*tensor1.get(&[0, 0, 0]).unwrap(), 1.0);
         assert_eq!(*tensor1.get(&[0, 1, 1]).unwrap(), 4.0);
 
         // Add dimension at the end
         let mut tensor2 = Tensor::<f32>::from_data(vec![1.0, 2.0, 3.0, 4.0], vec![2, 2]).unwrap();
-        tensor2.unsqueeze(Dims::Single(2)).unwrap();
+        tensor2.unsqueeze(TensorDims::Single(2)).unwrap();
         assert_eq!(tensor2.shape(), &[2, 2, 1]);
         assert_eq!(*tensor2.get(&[0, 0, 0]).unwrap(), 1.0);
         assert_eq!(*tensor2.get(&[1, 1, 0]).unwrap(), 4.0);
 
         // Add dimension in the middle
         let mut tensor3 = Tensor::<f32>::from_data(vec![1.0, 2.0, 3.0, 4.0], vec![2, 2]).unwrap();
-        tensor3.unsqueeze(Dims::Single(1)).unwrap();
+        tensor3.unsqueeze(TensorDims::Single(1)).unwrap();
         assert_eq!(tensor3.shape(), &[2, 1, 2]);
         assert_eq!(*tensor3.get(&[0, 0, 0]).unwrap(), 1.0);
         assert_eq!(*tensor3.get(&[1, 0, 1]).unwrap(), 4.0);
@@ -412,7 +412,7 @@ mod tests {
         let mut tensor = Tensor::<f32>::from_data(vec![1.0, 2.0, 3.0, 4.0], vec![2, 2]).unwrap();
 
         // Add multiple dimensions
-        tensor.unsqueeze(Dims::Multiple(vec![0, 3])).unwrap();
+        tensor.unsqueeze(TensorDims::Multiple(vec![0, 3])).unwrap();
         assert_eq!(tensor.shape(), &[1, 2, 2, 1]);
         assert_eq!(*tensor.get(&[0, 0, 0, 0]).unwrap(), 1.0);
         assert_eq!(*tensor.get(&[0, 1, 1, 0]).unwrap(), 4.0);
@@ -424,10 +424,10 @@ mod tests {
 
         // Add dimension and then remove it
         let mut test_tensor = original.clone();
-        test_tensor.unsqueeze(Dims::Single(0)).unwrap();
+        test_tensor.unsqueeze(TensorDims::Single(0)).unwrap();
         assert_eq!(test_tensor.shape(), &[1, 2, 2]);
 
-        test_tensor.squeeze(Dims::Single(0)).unwrap();
+        test_tensor.squeeze(TensorDims::Single(0)).unwrap();
         assert_eq!(test_tensor.shape(), original.shape());
 
         // Check that data is preserved
@@ -480,16 +480,16 @@ mod tests {
         let mut tensor = Tensor::<f32>::from_data(vec![1.0, 2.0, 3.0, 4.0], vec![2, 2]).unwrap();
 
         // Try to squeeze dimension that isn't size 1
-        let result = tensor.squeeze(Dims::Single(0));
+        let result = tensor.squeeze(TensorDims::Single(0));
         assert!(result.is_err());
 
         // Try to squeeze out of bounds dimension
-        let result = tensor.squeeze(Dims::Single(5));
+        let result = tensor.squeeze(TensorDims::Single(5));
         assert!(result.is_err());
 
         // Try to squeeze all dimensions from a tensor that would become empty
         let mut scalar_tensor = Tensor::<f32>::from_data(vec![42.0], vec![1]).unwrap();
-        let result = scalar_tensor.squeeze(Dims::All);
+        let result = scalar_tensor.squeeze(TensorDims::All);
         assert!(result.is_err());
     }
 
@@ -498,15 +498,15 @@ mod tests {
         let mut tensor = Tensor::<f32>::from_data(vec![1.0, 2.0, 3.0, 4.0], vec![2, 2]).unwrap();
 
         // Try to use Dims::All (not supported)
-        let result = tensor.unsqueeze(Dims::All);
+        let result = tensor.unsqueeze(TensorDims::All);
         assert!(result.is_err());
 
         // Try to add dimension out of bounds
-        let result = tensor.unsqueeze(Dims::Single(5));
+        let result = tensor.unsqueeze(TensorDims::Single(5));
         assert!(result.is_err());
 
         // Try to add duplicate dimensions
-        let result = tensor.unsqueeze(Dims::Multiple(vec![0, 0]));
+        let result = tensor.unsqueeze(TensorDims::Multiple(vec![0, 0]));
         assert!(result.is_err());
     }
 }
