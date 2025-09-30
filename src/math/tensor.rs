@@ -10,6 +10,7 @@ pub mod linalg;
 pub mod arithmetic;
 pub mod math;
 pub mod comparison;
+pub mod broadcast;
 pub mod traits;
 
 pub use core::TensorCore;
@@ -20,10 +21,11 @@ pub use scalar::TensorScalar;
 pub use shape::TensorShape;
 pub use stats::TensorStats;
 pub use mask::TensorMask;
-pub use linalg::TensorLinearAlgebra;
+pub use linalg::TensorLinAlg;
 pub use arithmetic::TensorArithmetic;
 pub use math::TensorMath;
 pub use comparison::TensorComparison;
+pub use broadcast::TensorBroadcast;
 
 #[derive(Clone)]
 pub struct Tensor<T> {

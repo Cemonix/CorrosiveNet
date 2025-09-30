@@ -1,12 +1,10 @@
 use super::{Tensor, TensorError, TensorCore, TensorStorage, TensorNum};
 
-pub trait TensorLinearAlgebra<T> {
+pub trait TensorLinAlg<T> {
     fn matmul(&self, other: &Tensor<T>) -> Result<Tensor<T>, TensorError>;
-    fn broadcast_add(&self, other: &Tensor<T>) -> Result<Tensor<T>, TensorError>;
-    fn can_broadcast_with(&self, other: &Tensor<T>) -> bool;
 }
 
-impl<T> TensorLinearAlgebra<T> for Tensor<T>
+impl<T> TensorLinAlg<T> for Tensor<T>
 where
     T: TensorNum,
 {
@@ -51,140 +49,31 @@ where
 
         let self_data = &self.data;
         let other_data = &other.data;
-        let result_strides = result.strides().to_vec();
+        let self_row_stride = self.strides()[0];
+        let self_col_stride = self.strides()[1];
+        let other_row_stride = other.strides()[0];
+        let other_col_stride = other.strides()[1];
+        let result_row_stride = result.strides()[0];
+        let result_col_stride = result.strides()[1];
         let result_data = &mut result.data;
 
-        for i in 0..rows {
-            for j in 0..cols {
+        for j in 0..cols {
+            let other_col_offset = j * other_col_stride;
+            let result_col_offset = j * result_col_stride;
+
+            for i in 0..rows {
+                let self_row_offset = i * self_row_stride;
+                let result_idx = i * result_row_stride + result_col_offset;
                 let mut sum = T::zero();
 
                 for k in 0..inner {
-                    let self_idx = i * self.strides()[0] + k * self.strides()[1];
-                    let other_idx = k * other.strides()[0] + j * other.strides()[1];
-                    sum = sum + self_data[self_idx] * other_data[other_idx];
+                    let a_ik = self_data[self_row_offset + k * self_col_stride];
+                    let b_kj = other_data[k * other_row_stride + other_col_offset];
+                    sum = sum + a_ik * b_kj;
                 }
 
-                let result_idx = i * result_strides[0] + j * result_strides[1];
                 result_data[result_idx] = sum;
             }
-        }
-
-        Ok(result)
-    }
-
-    /// Check if two tensors can be broadcasted together.
-    ///
-    /// # Arguments
-    /// * `other` - The tensor to check broadcasting compatibility with
-    ///
-    /// # Returns
-    /// `true` if tensors can be broadcasted, `false` otherwise
-    fn can_broadcast_with(&self, other: &Tensor<T>) -> bool {
-        let self_shape = self.shape();
-        let other_shape = other.shape();
-
-        let max_dims = self_shape.len().max(other_shape.len());
-
-        for i in 0..max_dims {
-            let self_dim = if i < self_shape.len() {
-                self_shape[self_shape.len() - 1 - i]
-            } else {
-                1
-            };
-
-            let other_dim = if i < other_shape.len() {
-                other_shape[other_shape.len() - 1 - i]
-            } else {
-                1
-            };
-
-            if self_dim != other_dim && self_dim != 1 && other_dim != 1 {
-                return false;
-            }
-        }
-
-        true
-    }
-
-    /// Perform element-wise addition with broadcasting.
-    ///
-    /// # Arguments
-    /// * `other` - The tensor to add with broadcasting
-    ///
-    /// # Returns
-    /// A new tensor containing the broadcasted sum
-    ///
-    /// # Errors
-    /// When tensors cannot be broadcasted together
-    fn broadcast_add(&self, other: &Tensor<T>) -> Result<Tensor<T>, TensorError> {
-        if !self.can_broadcast_with(other) {
-            return Err(TensorError::new(&format!(
-                "Cannot broadcast shapes {:?} and {:?}",
-                self.shape(),
-                other.shape()
-            )));
-        }
-
-        let self_shape = self.shape();
-        let other_shape = other.shape();
-
-        let max_dims = self_shape.len().max(other_shape.len());
-        let mut result_shape = Vec::with_capacity(max_dims);
-
-        for i in 0..max_dims {
-            let self_dim = if i < self_shape.len() {
-                self_shape[self_shape.len() - 1 - i]
-            } else {
-                1
-            };
-
-            let other_dim = if i < other_shape.len() {
-                other_shape[other_shape.len() - 1 - i]
-            } else {
-                1
-            };
-
-            result_shape.push(self_dim.max(other_dim));
-        }
-
-        result_shape.reverse();
-        let mut result = Tensor::zeros(result_shape.clone())?;
-
-        let total_elements = result.size();
-        for i in 0..total_elements {
-            let mut indices = Vec::new();
-            let mut temp_i = i;
-            for &dim in result_shape.iter().rev() {
-                indices.push(temp_i % dim);
-                temp_i /= dim;
-            }
-            indices.reverse();
-
-            let mut self_indices = Vec::new();
-            let mut other_indices = Vec::new();
-
-            for (idx, &result_idx) in indices.iter().enumerate() {
-                if idx < self_shape.len() {
-                    let self_dim = self_shape[idx];
-                    self_indices.push(if self_dim == 1 { 0 } else { result_idx });
-                } else {
-                    self_indices.push(0);
-                }
-
-                if idx < other_shape.len() {
-                    let other_dim = other_shape[idx];
-                    other_indices.push(if other_dim == 1 { 0 } else { result_idx });
-                } else {
-                    other_indices.push(0);
-                }
-            }
-
-            self_indices.truncate(self_shape.len());
-            other_indices.truncate(other_shape.len());
-
-            let self_val = *self.get(&self_indices)?;
-            let other_val = *other.get(&other_indices)?;
-            result.set(&indices, self_val + other_val)?;
         }
 
         Ok(result)
@@ -193,7 +82,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use crate::math::tensor::{Tensor, TensorCore, TensorStorage, TensorLinearAlgebra};
+    use crate::math::tensor::{Tensor, TensorCore, TensorStorage, TensorLinAlg};
 
     #[test]
     fn test_tensor_multiplication_basic() {
@@ -234,16 +123,5 @@ mod tests {
         let b_3d = Tensor::<f32>::zeros(vec![2, 3, 4]).unwrap();
         let result = a_3d.matmul(&b_3d);
         assert!(result.is_err());
-    }
-
-    #[test]
-    fn test_broadcasting_compatibility() {
-        let a = Tensor::<f32>::zeros(vec![3, 1]).unwrap();
-        let b = Tensor::<f32>::zeros(vec![1, 4]).unwrap();
-        assert!(a.can_broadcast_with(&b));
-
-        let c = Tensor::<f32>::zeros(vec![3, 2]).unwrap();
-        let d = Tensor::<f32>::zeros(vec![3, 4]).unwrap();
-        assert!(!c.can_broadcast_with(&d));
     }
 }

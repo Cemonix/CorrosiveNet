@@ -1,4 +1,4 @@
-use super::{Tensor, TensorError};
+use super::{Tensor, TensorError, TensorElement, TensorNum};
 
 pub trait TensorCore<T> {
     fn shape(&self) -> &[usize];
@@ -7,6 +7,9 @@ pub trait TensorCore<T> {
     fn get(&self, indices: &[usize]) -> Result<&T, TensorError>;
     fn get_mut(&mut self, indices: &[usize]) -> Result<&mut T, TensorError>;
     fn set(&mut self, indices: &[usize], value: T) -> Result<(), TensorError>;
+    fn fill(&mut self, value: T) where T: TensorElement;
+    fn fill_zeros(&mut self) where T: TensorElement;
+    fn fill_ones(&mut self) where T: TensorNum;
 }
 
 impl<T> TensorCore<T> for Tensor<T> {
@@ -79,6 +82,32 @@ impl<T> TensorCore<T> for Tensor<T> {
         let slot = self.get_mut(indices)?;
         *slot = value;
         Ok(())
+    }
+
+    fn fill(&mut self, value: T)
+        where T: TensorElement
+    {
+        for elem in &mut self.data {
+            *elem = value;
+        }
+    }
+
+    fn fill_zeros(&mut self)
+        where T: TensorElement
+    {
+        let zero = T::default();
+        for elem in &mut self.data {
+            *elem = zero;
+        }
+    }
+
+    fn fill_ones(&mut self)
+        where T: TensorNum
+    {
+        let one = T::one();
+        for elem in &mut self.data {
+            *elem = one;
+        }
     }
 }
 
