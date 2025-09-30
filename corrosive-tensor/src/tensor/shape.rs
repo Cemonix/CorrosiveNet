@@ -269,7 +269,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use crate::math::tensor::{Tensor, TensorCore, TensorStorage, TensorDims, TensorShape};
+    use crate::tensor::{Tensor, TensorCore, TensorStorage, TensorDims, TensorShape};
 
     #[test]
     fn test_transpose() {

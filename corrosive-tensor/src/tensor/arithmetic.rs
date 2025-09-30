@@ -193,7 +193,7 @@ impl<T> Tensor<T> {
 
 #[cfg(test)]
 mod tests {
-    use crate::math::tensor::{Tensor, TensorCore, TensorStorage, TensorArithmetic};
+    use crate::tensor::{Tensor, TensorCore, TensorStorage, TensorArithmetic};
 
     #[test]
     fn test_element_wise_addition() {

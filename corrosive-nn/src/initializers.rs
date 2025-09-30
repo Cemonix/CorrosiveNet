@@ -2,7 +2,7 @@ use rand_distr::{Distribution, Uniform as RandUniform, Normal as RandNormal};
 use rand::rngs::StdRng;
 use rand::SeedableRng;
 use num_traits::NumCast;
-pub use crate::math::{Tensor, TensorError};
+use corrosive_tensor::prelude::*;
 
 #[derive(Debug, Clone)]
 pub enum InitializerType {
@@ -73,6 +73,7 @@ impl Initializer {
         self.seed = Some(seed);
         self
     }
+
     /// Initializes the matrix with the configured distribution
     ///
     /// # Arguments
@@ -86,12 +87,10 @@ impl Initializer {
     /// - Matrix dimensions are incompatible with the initialization type
     /// - Distribution creation fails
     /// - Matrix filling fails
-    pub fn initialize<T>(&self, matrix: &mut Tensor<T>) -> Result<(), TensorError>
+    pub fn initialize<T>(&self, shape: &[usize]) -> Result<Tensor<T>, TensorError>
     where
-        T: Copy + NumCast,
+        T: TensorFloat,
     {
-        let matrix_shape = matrix.shape();
-
         let mut rng = match self.seed {
             Some(seed) => StdRng::seed_from_u64(seed),
             None => {
@@ -101,15 +100,19 @@ impl Initializer {
         };
 
         // Generate values using the appropriate distribution
-        let values = self.sample_values(&matrix_shape, matrix.size(), &mut rng)?;
+        let values = self.sample_values(
+            shape, shape.iter().cloned().product(), &mut rng
+        )?;
 
-        matrix.fill(&values);
-        Ok(())
+        let tensor = Tensor::<T>::from_data(values, shape.to_vec())?;
+        Ok(tensor)
     }
 
-    fn sample_values<T>(&self, shape: &[usize], count: usize, rng: &mut StdRng) -> Result<Vec<T>, TensorError>
+    fn sample_values<T>(
+        &self, shape: &[usize], count: usize, rng: &mut StdRng
+    ) -> Result<Vec<T>, TensorError>
     where
-        T: Copy + NumCast,
+        T: TensorFloat,
     {
         match &self.init_type {
             InitializerType::XavierUniform => {

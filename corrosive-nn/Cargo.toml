@@ -1,0 +1,20 @@
+[package]
+name = "corrosive-nn"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[lib]
+name = "corrosive_nn"
+path = "src/lib.rs"
+
+[dependencies]
+corrosive-tensor = { path = "../corrosive-tensor" }
+num-traits.workspace = true
+rand.workspace = true
+rand_distr.workspace = true
+
+[dev-dependencies]
+criterion.workspace = true

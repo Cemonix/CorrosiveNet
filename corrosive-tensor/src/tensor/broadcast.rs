@@ -201,7 +201,7 @@ impl<T> Tensor<T> {
 
 #[cfg(test)]
 mod tests {
-    use crate::math::tensor::{Tensor, TensorCore, TensorStorage, TensorBroadcast};
+    use crate::tensor::{Tensor, TensorCore, TensorStorage, TensorBroadcast};
 
     #[test]
     fn test_broadcasting_compatibility() {

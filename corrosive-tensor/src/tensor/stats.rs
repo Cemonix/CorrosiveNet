@@ -87,7 +87,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use crate::math::tensor::{Tensor, TensorStorage, TensorStats};
+    use crate::tensor::{Tensor, TensorStorage, TensorStats};
 
 
     #[test]

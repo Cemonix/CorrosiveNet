@@ -173,7 +173,7 @@ impl<T> Tensor<T> {
 
 #[cfg(test)]
 mod tests {
-    use crate::math::tensor::{Tensor, TensorCore, TensorStorage, TensorComparison};
+    use crate::tensor::{Tensor, TensorCore, TensorStorage, TensorComparison};
 
 
     #[test]

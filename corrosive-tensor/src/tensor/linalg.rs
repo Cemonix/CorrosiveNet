@@ -82,7 +82,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use crate::math::tensor::{Tensor, TensorCore, TensorStorage, TensorLinAlg};
+    use crate::tensor::{Tensor, TensorCore, TensorStorage, TensorLinAlg};
 
     #[test]
     fn test_tensor_multiplication_basic() {

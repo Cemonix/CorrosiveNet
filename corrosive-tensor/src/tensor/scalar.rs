@@ -117,7 +117,7 @@ impl<T> Tensor<T> {
 
 #[cfg(test)]
 mod tests {
-    use crate::math::tensor::{Tensor, TensorCore, TensorStorage, TensorScalar};
+    use crate::tensor::{Tensor, TensorCore, TensorStorage, TensorScalar};
 
     #[test]
     fn test_scalar_operations() {

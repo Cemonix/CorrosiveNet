@@ -1,0 +1,23 @@
+[package]
+name = "corrosive-tensor"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[lib]
+name = "corrosive_tensor"
+path = "src/lib.rs"
+
+[dependencies]
+num-traits.workspace = true
+rand.workspace = true
+rand_distr.workspace = true
+
+[dev-dependencies]
+criterion.workspace = true
+
+[[bench]]
+name = "matmul"
+harness = false
