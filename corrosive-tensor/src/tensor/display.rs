@@ -90,9 +90,12 @@ where
             output.push_str(&format!("<{}>", std::any::type_name::<T>()));
         }
 
+        // Get CPU copy for display (transfers from CUDA if needed)
+        let data = self.to_vec().expect("Failed to get tensor data for display");
+
         if options.compact && self.size() <= 10 {
             output.push('[');
-            for (i, value) in self.data.iter().take(options.max_elements).enumerate() {
+            for (i, value) in data.iter().take(options.max_elements).enumerate() {
                 if i > 0 {
                     output.push_str(", ");
                 }
@@ -111,7 +114,7 @@ where
 
             if self.shape().len() == 1 {
                 output.push_str("  [");
-                for (i, value) in self.data.iter().take(options.max_elements).enumerate() {
+                for (i, value) in data.iter().take(options.max_elements).enumerate() {
                     if i > 0 {
                         output.push_str(", ");
                     }
@@ -139,13 +142,13 @@ where
                         let idx = row * cols + col;
                         if options.scientific_notation {
                             output.push_str(&format!("{:width$.precision$e}",
-                                self.data[idx],
+                                data[idx],
                                 width = 8,
                                 precision = options.precision
                             ));
                         } else {
                             output.push_str(&format!("{:width$.precision$}",
-                                self.data[idx],
+                                data[idx],
                                 width = 8,
                                 precision = options.precision
                             ));
@@ -167,7 +170,7 @@ where
                 output.push_str(&options.max_elements.min(self.size()).to_string());
                 output.push_str(" elements: ");
 
-                for (i, value) in self.data.iter().take(options.max_elements).enumerate() {
+                for (i, value) in data.iter().take(options.max_elements).enumerate() {
                     if i > 0 {
                         output.push_str(", ");
                     }
