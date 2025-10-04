@@ -1,9 +1,20 @@
+use crate::{Device, tensor::TensorStorage};
+
 use super::{Tensor, TensorError, TensorElement, TensorNum};
 
 pub trait TensorCore<T> {
     fn shape(&self) -> &[usize];
     fn strides(&self) -> &[usize];
     fn size(&self) -> usize;
+    fn device(&self) -> Device;
+    fn has_same_device(&self, other: &Tensor<T>) -> bool;
+    fn to_vec(&self) -> Result<Vec<T>, TensorError> where T: Clone;
+    fn cpu(&self) -> Result<Self, TensorError> where T: Clone, Self: Sized;
+    #[cfg(feature = "cuda")]
+    fn cuda(&self) -> Result<Self, TensorError> where T: Clone, Self: Sized;
+    #[cfg(not(feature = "cuda"))]
+    fn cuda(&self) -> Result<Self, TensorError> where T: Clone, Self: Sized;
+    fn to(&self, device: Device) -> Result<Self, TensorError> where T: Clone, Self: Sized;
     fn get(&self, indices: &[usize]) -> Result<&T, TensorError>;
     fn get_mut(&mut self, indices: &[usize]) -> Result<&mut T, TensorError>;
     fn set(&mut self, indices: &[usize], value: T) -> Result<(), TensorError>;
@@ -34,7 +45,186 @@ impl<T> TensorCore<T> for Tensor<T> {
     /// # Returns
     /// Total number of elements across all dimensions
     fn size(&self) -> usize {
-        self.data.len()
+        self.shape.iter().product()
+    }
+
+    /// Convert tensor data to a Vec (copies to CPU if needed)
+    ///
+    /// # Returns
+    /// Vector containing a copy of the tensor data on CPU
+    ///
+    /// # Errors
+    /// When CUDA memory transfer fails
+    fn to_vec(&self) -> Result<Vec<T>, TensorError>
+    where
+        T: Clone,
+    {
+        match &self.storage {
+            TensorStorage::CPU(data) => Ok(data.clone()),
+            #[cfg(feature = "cuda")]
+            TensorStorage::CUDA { context, buffer, .. } => {
+                context.dtoh_sync_copy(buffer)
+                    .map_err(|e| TensorError::new(&format!("CUDA memory transfer failed: {}", e)))
+            }
+        }
+    }
+
+    /// Get the device where this tensor's data is stored
+    ///
+    /// # Returns
+    /// The device (CPU or CUDA with device index)
+    fn device(&self) -> Device {
+        match &self.storage {
+            TensorStorage::CPU(_) => Device::CPU,
+            #[cfg(feature = "cuda")]
+            TensorStorage::CUDA { device_idx, .. } => Device::CUDA(*device_idx),
+        }
+    }
+
+    /// Check if two tensors are on the same device
+    ///
+    /// # Arguments
+    /// * `other` - The tensor to compare with
+    ///
+    /// # Returns
+    /// True if both tensors are on the same device
+    fn has_same_device(&self, other: &Tensor<T>) -> bool {
+        match (self.device(), other.device()) {
+            (Device::CPU, Device::CPU) => true,
+            (Device::CUDA(idx1), Device::CUDA(idx2)) => idx1 == idx2,
+            _ => false,
+        }
+    }
+
+    /// Move tensor to CPU (returns new tensor)
+    ///
+    /// # Returns
+    /// New tensor with data on CPU
+    ///
+    /// # Errors
+    /// When CUDA memory transfer fails
+    fn cpu(&self) -> Result<Self, TensorError>
+    where
+        T: Clone,
+    {
+        self.to(Device::CPU)
+    }
+
+    /// Move tensor to CUDA device (returns new tensor)
+    ///
+    /// # Returns
+    /// New tensor with data on GPU
+    ///
+    /// # Errors
+    /// When CUDA is not available or memory transfer fails
+    #[cfg(feature = "cuda")]
+    fn cuda(&self) -> Result<Self, TensorError>
+    where
+        T: Clone,
+    {
+        self.to(Device::cuda())
+    }
+
+    #[cfg(not(feature = "cuda"))]
+    fn cuda(&self) -> Result<Self, TensorError>
+    where
+        T: Clone,
+    {
+        Err(TensorError::new(
+            "CUDA support not compiled. Rebuild with --features cuda"
+        ))
+    }
+
+    /// Move tensor to specified device (returns new tensor)
+    ///
+    /// # Arguments
+    /// * `device` - Target device (CPU or CUDA)
+    ///
+    /// # Returns
+    /// New tensor on target device (original unchanged)
+    ///
+    /// # Errors
+    /// When device transfer fails
+    fn to(&self, device: Device) -> Result<Self, TensorError>
+    where
+        T: Clone,
+    {
+        // Already on target device - just clone
+        if self.device() == device {
+            return Ok(self.clone());
+        }
+
+        match (&self.storage, device) {
+            // CPU to CUDA transfer
+            #[cfg(feature = "cuda")]
+            (TensorStorage::CPU(data), Device::CUDA(device_idx)) => {
+                use crate::cuda::CudaBackend;
+
+                let backend = CudaBackend::new(device_idx)
+                    .map_err(|e| TensorError::new(&format!("Failed to initialize CUDA: {}", e)))?;
+
+                let stream = backend.context().default_stream();
+                let buffer = stream.htod_sync_copy(data)
+                    .map_err(|e| TensorError::new(&format!("Failed to copy to CUDA: {}", e)))?;
+
+                Ok(Tensor {
+                    storage: TensorStorage::CUDA {
+                        context: backend.context().clone(),
+                        buffer,
+                        device_idx,
+                    },
+                    shape: self.shape.clone(),
+                    strides: self.strides.clone(),
+                })
+            }
+            // CUDA to CPU transfer
+            #[cfg(feature = "cuda")]
+            (TensorStorage::CUDA { context, buffer, .. }, Device::CPU) => {
+                let stream = context.default_stream();
+                let data = stream.dtoh_sync_copy(buffer)
+                    .map_err(|e| TensorError::new(&format!("Failed to copy from CUDA: {}", e)))?;
+
+                Ok(Tensor {
+                    storage: TensorStorage::CPU(data),
+                    shape: self.shape.clone(),
+                    strides: self.strides.clone(),
+                })
+            }
+            // CUDA to different CUDA device
+            #[cfg(feature = "cuda")]
+            (TensorStorage::CUDA { buffer, .. }, Device::CUDA(target_idx)) => {
+                use crate::cuda::CudaBackend;
+
+                // Transfer via CPU (peer-to-peer transfer is more complex)
+                let data = self.to_vec()?;
+                let backend = CudaBackend::new(target_idx)
+                    .map_err(|e| TensorError::new(&format!("Failed to initialize CUDA: {}", e)))?;
+
+                let stream = backend.context().default_stream();
+                let new_buffer = stream.htod_sync_copy(&data)
+                    .map_err(|e| TensorError::new(&format!("Failed to copy to CUDA: {}", e)))?;
+
+                Ok(Tensor {
+                    storage: TensorStorage::CUDA {
+                        context: backend.context().clone(),
+                        buffer: new_buffer,
+                        device_idx: target_idx,
+                    },
+                    shape: self.shape.clone(),
+                    strides: self.strides.clone(),
+                })
+            }
+            #[cfg(not(feature = "cuda"))]
+            (_, Device::CUDA(_)) => {
+                Err(TensorError::new(
+                    "CUDA support not compiled. Rebuild with --features cuda"
+                ))
+            }
+            (_, Device::CPU) => {
+                // This should be unreachable due to the early return above
+                Ok(self.clone())
+            }
+        }
     }
 
     /// Get a reference to an element at the specified indices.
@@ -49,7 +239,15 @@ impl<T> TensorCore<T> for Tensor<T> {
     /// When indices are out of bounds or incorrect number of indices provided
     fn get(&self, indices: &[usize]) -> Result<&T, TensorError> {
         let flat_index = self.index(indices)?;
-        Ok(&self.data[flat_index])
+        match &self.storage {
+            TensorStorage::CPU(data) => Ok(&data[flat_index]),
+            #[cfg(feature = "cuda")]
+            TensorStorage::CUDA { .. } => {
+                Err(TensorError::new(
+                    "Cannot directly access elements of CUDA tensor. Use .cpu() or .to_vec() first."
+                ))
+            }
+        }
     }
 
     /// Get a mutable reference to an element at the specified indices.
@@ -64,7 +262,15 @@ impl<T> TensorCore<T> for Tensor<T> {
     /// When indices are out of bounds or incorrect number of indices provided
     fn get_mut(&mut self, indices: &[usize]) -> Result<&mut T, TensorError> {
         let flat_index = self.index(indices)?;
-        Ok(&mut self.data[flat_index])
+        match &mut self.storage {
+            TensorStorage::CPU(data) => Ok(&mut data[flat_index]),
+            #[cfg(feature = "cuda")]
+            TensorStorage::CUDA { .. } => {
+                Err(TensorError::new(
+                    "Cannot directly access elements of CUDA tensor. Use .cpu() first."
+                ))
+            }
+        }
     }
 
     /// Set the value of an element at the specified indices.
@@ -87,26 +293,50 @@ impl<T> TensorCore<T> for Tensor<T> {
     fn fill(&mut self, value: T)
         where T: TensorElement
     {
-        for elem in &mut self.data {
-            *elem = value;
+        match &mut self.storage {
+            TensorStorage::CPU(data) => {
+                for elem in data {
+                    *elem = value;
+                }
+            }
+            #[cfg(feature = "cuda")]
+            TensorStorage::CUDA { .. } => {
+                panic!("fill() not yet implemented for CUDA tensors. Use .cpu() first or wait for CUDA kernel implementation.");
+            }
         }
     }
 
     fn fill_zeros(&mut self)
         where T: TensorElement
     {
-        let zero = T::default();
-        for elem in &mut self.data {
-            *elem = zero;
+        match &mut self.storage {
+            TensorStorage::CPU(data) => {
+                let zero = T::default();
+                for elem in data {
+                    *elem = zero;
+                }
+            }
+            #[cfg(feature = "cuda")]
+            TensorStorage::CUDA { .. } => {
+                panic!("fill_zeros() not yet implemented for CUDA tensors. Use .cpu() first or wait for CUDA kernel implementation.");
+            }
         }
     }
 
     fn fill_ones(&mut self)
         where T: TensorNum
     {
-        let one = T::one();
-        for elem in &mut self.data {
-            *elem = one;
+        match &mut self.storage {
+            TensorStorage::CPU(data) => {
+                let one = T::one();
+                for elem in data {
+                    *elem = one;
+                }
+            }
+            #[cfg(feature = "cuda")]
+            TensorStorage::CUDA { .. } => {
+                panic!("fill_ones() not yet implemented for CUDA tensors. Use .cpu() first or wait for CUDA kernel implementation.");
+            }
         }
     }
 }
