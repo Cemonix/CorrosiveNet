@@ -62,8 +62,8 @@ impl<T> TensorCore<T> for Tensor<T> {
         match &self.storage {
             TensorStorage::CPU(data) => Ok(data.clone()),
             #[cfg(feature = "cuda")]
-            TensorStorage::CUDA { context, buffer, .. } => {
-                context.dtoh_sync_copy(buffer)
+            TensorStorage::CUDA { buffer, .. } => {
+                buffer.dtoh_sync_copy()
                     .map_err(|e| TensorError::new(&format!("CUDA memory transfer failed: {}", e)))
             }
         }
@@ -158,13 +158,12 @@ impl<T> TensorCore<T> for Tensor<T> {
             // CPU to CUDA transfer
             #[cfg(feature = "cuda")]
             (TensorStorage::CPU(data), Device::CUDA(device_idx)) => {
-                use crate::cuda::CudaBackend;
+                use corrosive_cuda::CudaBackend;
 
                 let backend = CudaBackend::new(device_idx)
                     .map_err(|e| TensorError::new(&format!("Failed to initialize CUDA: {}", e)))?;
 
-                let stream = backend.context().default_stream();
-                let buffer = stream.htod_sync_copy(data)
+                let buffer = backend.context().htod_sync_copy(data)
                     .map_err(|e| TensorError::new(&format!("Failed to copy to CUDA: {}", e)))?;
 
                 Ok(Tensor {
@@ -179,9 +178,8 @@ impl<T> TensorCore<T> for Tensor<T> {
             }
             // CUDA to CPU transfer
             #[cfg(feature = "cuda")]
-            (TensorStorage::CUDA { context, buffer, .. }, Device::CPU) => {
-                let stream = context.default_stream();
-                let data = stream.dtoh_sync_copy(buffer)
+            (TensorStorage::CUDA { buffer, .. }, Device::CPU) => {
+                let data = buffer.dtoh_sync_copy()
                     .map_err(|e| TensorError::new(&format!("Failed to copy from CUDA: {}", e)))?;
 
                 Ok(Tensor {
@@ -192,16 +190,15 @@ impl<T> TensorCore<T> for Tensor<T> {
             }
             // CUDA to different CUDA device
             #[cfg(feature = "cuda")]
-            (TensorStorage::CUDA { buffer, .. }, Device::CUDA(target_idx)) => {
-                use crate::cuda::CudaBackend;
+            (TensorStorage::CUDA { .. }, Device::CUDA(target_idx)) => {
+                use corrosive_cuda::CudaBackend;
 
                 // Transfer via CPU (peer-to-peer transfer is more complex)
                 let data = self.to_vec()?;
                 let backend = CudaBackend::new(target_idx)
                     .map_err(|e| TensorError::new(&format!("Failed to initialize CUDA: {}", e)))?;
 
-                let stream = backend.context().default_stream();
-                let new_buffer = stream.htod_sync_copy(&data)
+                let new_buffer = backend.context().htod_sync_copy(&data)
                     .map_err(|e| TensorError::new(&format!("Failed to copy to CUDA: {}", e)))?;
 
                 Ok(Tensor {

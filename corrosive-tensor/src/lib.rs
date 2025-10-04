@@ -1,8 +1,5 @@
 mod tensor;
 
-#[cfg(feature = "cuda")]
-mod cuda;
-
 // Core types always available at root
 pub use tensor::{Tensor, TensorError, Device};
 
@@ -14,10 +11,6 @@ pub use tensor::{
     TensorComparison, TensorBroadcast,
 };
 
-// CUDA backend
-#[cfg(feature = "cuda")]
-pub use cuda::CudaBackend;
-
 // Prelude for convenience
 pub mod prelude {
     pub use crate::tensor::{
@@ -27,7 +20,4 @@ pub mod prelude {
         TensorStats, TensorMask, TensorLinAlg, TensorArithmetic, TensorMath,
         TensorComparison, TensorBroadcast,
     };
-
-    #[cfg(feature = "cuda")]
-    pub use crate::cuda::CudaBackend;
 }

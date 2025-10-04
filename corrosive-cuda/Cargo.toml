@@ -1,5 +1,5 @@
 [package]
-name = "corrosive-tensor"
+name = "corrosive-cuda"
 version.workspace = true
 edition.workspace = true
 authors.workspace = true
@@ -7,22 +7,19 @@ license.workspace = true
 repository.workspace = true
 
 [lib]
-name = "corrosive_tensor"
+name = "corrosive_cuda"
 path = "src/lib.rs"
 
 [dependencies]
 num-traits.workspace = true
 rand.workspace = true
 rand_distr.workspace = true
-corrosive-cuda = { path = "../corrosive-cuda", optional = true }
+cudarc = { workspace = true, optional = true }
+once_cell.workspace = true
 
 [features]
 default = []
-cuda = ["corrosive-cuda/cuda"]
+cuda = ["cudarc"]
 
 [dev-dependencies]
 criterion.workspace = true
-
-[[bench]]
-name = "matmul"
-harness = false

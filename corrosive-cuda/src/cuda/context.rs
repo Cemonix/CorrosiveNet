@@ -28,7 +28,6 @@ impl ContextManagerInner {
         let ctx = CudaContext::new(device_idx)
             .map_err(|e| CudaError::DeviceInit(e.to_string()))?;
 
-        let ctx = Arc::new(ctx);
         self.contexts.insert(device_idx, ctx.clone());
         Ok(ctx)
     }

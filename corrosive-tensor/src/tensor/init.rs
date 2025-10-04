@@ -32,7 +32,7 @@ where
             }),
             #[cfg(feature = "cuda")]
             Device::CUDA(device_idx) => {
-                use crate::cuda::CudaBackend;
+                use corrosive_cuda::CudaBackend;
 
                 let backend = CudaBackend::new(device_idx)
                     .map_err(|e| TensorError::new(&format!("Failed to initialize CUDA: {}", e)))?;

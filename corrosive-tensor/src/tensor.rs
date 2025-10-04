@@ -1,7 +1,8 @@
 #[cfg(feature = "cuda")]
-use cudarc::driver::{CudaContext, CudaSlice};
-#[cfg(feature = "cuda")]
 use std::sync::Arc;
+
+#[cfg(feature = "cuda")]
+use cudarc::driver::{CudaContext, CudaSlice};
 
 pub mod core;
 pub mod init;

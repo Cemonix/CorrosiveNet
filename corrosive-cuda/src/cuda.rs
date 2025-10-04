@@ -11,10 +11,10 @@ mod context;
 mod cache;
 mod backend;
 
-pub use error::CudaError;
 pub use backend::CudaBackend;
+pub use error::CudaError;
 
-// Re-export context and cache functions for advanced use
-pub use context::get_context;
-pub use cache::{get_or_compile_kernel, cache_stats, clear_cache};
+// Internal use only
+pub(crate) use context::get_context;
+pub(crate) use cache::{get_or_compile_kernel, cache_stats, clear_cache};
 

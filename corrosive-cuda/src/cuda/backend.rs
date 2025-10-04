@@ -1,4 +1,4 @@
-use cudarc::driver::{CudaContext, CudaSlice, LaunchConfig, CudaModule, PushKernelArg};
+use cudarc::driver::{CudaContext, CudaModule};
 use std::sync::Arc;
 
 use super::cache::get_or_compile_kernel;
@@ -89,54 +89,5 @@ impl CudaBackend {
         let kernel_src = std::fs::read_to_string(kernel_path)
             .map_err(|e| CudaError::FileRead(e.to_string()))?;
         self.get_or_compile_kernel(kernel_name, &kernel_src)
-    }
-
-    /// Launch element-wise addition kernel for f32 tensors
-    ///
-    /// # Arguments
-    /// * `module` - The loaded CUDA module containing the kernel
-    /// * `a` - First input array on GPU
-    /// * `b` - Second input array on GPU
-    /// * `c` - Output array on GPU
-    /// * `n` - Number of elements
-    ///
-    /// # Returns
-    /// Result indicating success or failure
-    ///
-    /// # Errors
-    /// When kernel launch fails
-    pub fn elementwise_add_f32(
-        &self,
-        module: &Arc<CudaModule>,
-        a: &CudaSlice<f32>,
-        b: &CudaSlice<f32>,
-        c: &mut CudaSlice<f32>,
-        n: usize,
-    ) -> Result<(), CudaError> {
-        let threads_per_block = 256u32;
-        let num_blocks = ((n as u32) + threads_per_block - 1) / threads_per_block;
-
-        let cfg = LaunchConfig {
-            grid_dim: (num_blocks, 1, 1),
-            block_dim: (threads_per_block, 1, 1),
-            shared_mem_bytes: 0,
-        };
-
-        let func = module.load_function("elementwise_add_f32")
-            .map_err(|e| CudaError::KernelNotFound(format!("elementwise_add_f32: {}", e)))?;
-
-        let stream = self.context.default_stream();
-        let mut builder = stream.launch_builder(&func);
-        builder.arg(a);
-        builder.arg(b);
-        builder.arg(c);
-        builder.arg(&n);
-
-        unsafe {
-            builder.launch(cfg)
-                .map_err(|e| CudaError::KernelLaunch(e.to_string()))?;
-        }
-
-        Ok(())
     }
 }

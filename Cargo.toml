@@ -1,6 +1,7 @@
 [workspace]
 resolver = "3"
 members = [
+    "corrosive-cuda",
     "corrosive-tensor",
     "corrosive-nn",
 ]

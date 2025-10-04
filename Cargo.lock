@@ -100,12 +100,24 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b94f61472cee1439c0b966b47e3aca9ae07e45d070759512cd390ea2bebc6675"
 
 [[package]]
+name = "corrosive-cuda"
+version = "0.1.0"
+dependencies = [
+ "criterion",
+ "cudarc",
+ "num-traits",
+ "once_cell",
+ "rand",
+ "rand_distr",
+]
+
+[[package]]
 name = "corrosive-nn"
 version = "0.1.0"
 dependencies = [
+ "corrosive-cuda",
  "corrosive-tensor",
  "criterion",
- "cudarc",
  "num-traits",
  "rand",
  "rand_distr",
@@ -115,10 +127,9 @@ dependencies = [
 name = "corrosive-tensor"
 version = "0.1.0"
 dependencies = [
+ "corrosive-cuda",
  "criterion",
- "cudarc",
  "num-traits",
- "once_cell",
  "rand",
  "rand_distr",
 ]
