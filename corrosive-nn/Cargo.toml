@@ -12,9 +12,18 @@ path = "src/lib.rs"
 
 [dependencies]
 corrosive-tensor = { path = "../corrosive-tensor" }
+corrosive-cuda = { path = "../corrosive-cuda", optional = true }
 num-traits.workspace = true
 rand.workspace = true
 rand_distr.workspace = true
 
+[features]
+default = []
+cuda = ["corrosive-cuda/cuda", "corrosive-tensor/cuda"]
+
 [dev-dependencies]
 criterion.workspace = true
+
+[[example]]
+name = "simple_training"
+path = "examples/simple_training.rs"
