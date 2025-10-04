@@ -1,14 +1,12 @@
-use crate::tensor::Device;
+use super::{Tensor, TensorError, TensorCore, TensorNum, TensorStorage, Device};
 
-use super::{Tensor, TensorError, TensorNum};
-
-pub trait TensorStorage<T> {
+pub trait TensorInit<T> {
     fn zeros(shape: Vec<usize>, device: Device) -> Result<Self, TensorError> where Self: Sized;
     fn ones(shape: Vec<usize>, device: Device) -> Result<Self, TensorError> where Self: Sized;
     fn from_data(data: Vec<T>, shape: Vec<usize>, device: Device) -> Result<Self, TensorError> where Self: Sized;
 }
 
-impl<T> TensorStorage<T> for Tensor<T>
+impl<T> TensorInit<T> for Tensor<T>
 where
     T: TensorNum,
 {
@@ -26,12 +24,40 @@ where
         let size: usize = shape.iter().product();
         let strides = Self::calculate_strides(&shape);
 
-        Ok(Tensor {
-            data: vec![T::default(); size],
-            shape,
-            strides,
-            device
-        })
+        match device {
+            Device::CPU => Ok(Tensor {
+                storage: TensorStorage::CPU(vec![T::default(); size]),
+                shape,
+                strides,
+            }),
+            #[cfg(feature = "cuda")]
+            Device::CUDA(device_idx) => {
+                use crate::cuda::CudaBackend;
+
+                let backend = CudaBackend::new(device_idx)
+                    .map_err(|e| TensorError::new(&format!("Failed to initialize CUDA: {}", e)))?;
+
+                let stream = backend.context().default_stream();
+                let buffer = stream.alloc_zeros::<T>(size)
+                    .map_err(|e| TensorError::new(&format!("Failed to allocate CUDA memory: {}", e)))?;
+
+                Ok(Tensor {
+                    storage: TensorStorage::CUDA {
+                        context: backend.context().clone(),
+                        buffer,
+                        device_idx,
+                    },
+                    shape,
+                    strides,
+                })
+            }
+            #[cfg(not(feature = "cuda"))]
+            Device::CUDA(_) => {
+                Err(TensorError::new(
+                    "CUDA support not compiled. Rebuild with --features cuda"
+                ))
+            }
+        }
     }
 
     /// Create a new tensor filled with ones.
@@ -51,12 +77,18 @@ where
         let size: usize = shape.iter().product();
         let strides = Self::calculate_strides(&shape);
 
-        Ok(Tensor {
-            data: vec![T::one(); size],
+        // For now, create on CPU and transfer to CUDA if needed
+        // TODO: Optimize to directly create ones on CUDA
+        let cpu_tensor = Tensor {
+            storage: TensorStorage::CPU(vec![T::one(); size]),
             shape,
             strides,
-            device
-        })
+        };
+
+        match device {
+            Device::CPU => Ok(cpu_tensor),
+            cuda_device => cpu_tensor.to(cuda_device),
+        }
     }
 
     /// Create a tensor from existing data with the specified shape.
@@ -81,12 +113,16 @@ where
         Self::validation(&shape)?;
 
         let strides = Self::calculate_strides(&shape);
-        Ok(Tensor {
-            data,
+        let cpu_tensor = Tensor {
+            storage: TensorStorage::CPU(data),
             shape,
             strides,
-            device
-        })
+        };
+
+        match device {
+            Device::CPU => Ok(cpu_tensor),
+            cuda_device => cpu_tensor.to(cuda_device),
+        }
     }
 }
 
