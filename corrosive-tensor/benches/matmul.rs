@@ -5,8 +5,8 @@ fn bench_matmul_square(c: &mut Criterion) {
     let mut group = c.benchmark_group("matmul_square");
 
     for size in [16, 32, 64, 128, 256, 512].iter() {
-        let a = Tensor::<f32>::ones(vec![*size, *size]).unwrap();
-        let b = Tensor::<f32>::ones(vec![*size, *size]).unwrap();
+        let a = Tensor::<f32>::ones(vec![*size, *size], Device::CPU).unwrap();
+        let b = Tensor::<f32>::ones(vec![*size, *size], Device::CPU).unwrap();
 
         group.bench_with_input(BenchmarkId::from_parameter(size), size, |bencher, _| {
             bencher.iter(|| a.matmul(&b).unwrap());
@@ -26,8 +26,8 @@ fn bench_matmul_rectangular(c: &mut Criterion) {
     ];
 
     for (name, m, k, n) in configs {
-        let a = Tensor::<f32>::ones(vec![m, k]).unwrap();
-        let b = Tensor::<f32>::ones(vec![k, n]).unwrap();
+        let a = Tensor::<f32>::ones(vec![m, k], Device::CPU).unwrap();
+        let b = Tensor::<f32>::ones(vec![k, n], Device::CPU).unwrap();
 
         group.bench_with_input(BenchmarkId::new("size", name), &(m, k, n), |bencher, _| {
             bencher.iter(|| a.matmul(&b).unwrap());
