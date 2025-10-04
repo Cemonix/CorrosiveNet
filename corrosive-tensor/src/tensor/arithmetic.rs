@@ -149,6 +149,10 @@ impl<T> Tensor<T> {
             return Err(TensorError::new("Shapes do not match for operation"));
         }
 
+        if !self.has_same_device(other) {
+            return Err(TensorError::new("Tensors are on different devices"));
+        }
+
         let data: Vec<T> = self
             .data
             .iter()
@@ -160,6 +164,7 @@ impl<T> Tensor<T> {
             data,
             shape: self.shape.clone(),
             strides: Self::calculate_strides(&self.shape),
+            device: self.device.clone(),
         })
     }
 
@@ -193,12 +198,12 @@ impl<T> Tensor<T> {
 
 #[cfg(test)]
 mod tests {
-    use crate::tensor::{Tensor, TensorCore, TensorStorage, TensorArithmetic};
+    use crate::tensor::{Device, Tensor, TensorArithmetic, TensorCore, TensorStorage};
 
     #[test]
     fn test_element_wise_addition() {
-        let a = Tensor::<f32>::from_data(vec![1.0, 2.0, 3.0, 4.0], vec![2, 2]).unwrap();
-        let b = Tensor::<f32>::from_data(vec![5.0, 6.0, 7.0, 8.0], vec![2, 2]).unwrap();
+        let a = Tensor::<f32>::from_data(vec![1.0, 2.0, 3.0, 4.0], vec![2, 2], Device::CPU).unwrap();
+        let b = Tensor::<f32>::from_data(vec![5.0, 6.0, 7.0, 8.0], vec![2, 2], Device::CPU).unwrap();
 
         let result = a.add(&b).unwrap();
         assert_eq!(*result.get(&[0, 0]).unwrap(), 6.0);  // 1 + 5
@@ -209,8 +214,8 @@ mod tests {
 
     #[test]
     fn test_element_wise_addition_mut() {
-        let mut a = Tensor::<f32>::from_data(vec![1.0, 2.0, 3.0, 4.0], vec![2, 2]).unwrap();
-        let b = Tensor::<f32>::from_data(vec![5.0, 6.0, 7.0, 8.0], vec![2, 2]).unwrap();
+        let mut a = Tensor::<f32>::from_data(vec![1.0, 2.0, 3.0, 4.0], vec![2, 2], Device::CPU).unwrap();
+        let b = Tensor::<f32>::from_data(vec![5.0, 6.0, 7.0, 8.0], vec![2, 2], Device::CPU).unwrap();
 
         a.add_mut(&b).unwrap();
         assert_eq!(*a.get(&[0, 0]).unwrap(), 6.0);
@@ -219,8 +224,8 @@ mod tests {
 
     #[test]
     fn test_element_wise_subtraction() {
-        let a = Tensor::<f32>::from_data(vec![10.0, 8.0, 6.0, 4.0], vec![2, 2]).unwrap();
-        let b = Tensor::<f32>::from_data(vec![1.0, 2.0, 3.0, 4.0], vec![2, 2]).unwrap();
+        let a = Tensor::<f32>::from_data(vec![10.0, 8.0, 6.0, 4.0], vec![2, 2], Device::CPU).unwrap();
+        let b = Tensor::<f32>::from_data(vec![1.0, 2.0, 3.0, 4.0], vec![2, 2], Device::CPU).unwrap();
 
         let result = a.sub(&b).unwrap();
         assert_eq!(*result.get(&[0, 0]).unwrap(), 9.0);  // 10 - 1
@@ -231,8 +236,8 @@ mod tests {
 
     #[test]
     fn test_elementwise_multiplication() {
-        let a = Tensor::<f32>::from_data(vec![1.0, 2.0, 3.0, 4.0], vec![2, 2]).unwrap();
-        let b = Tensor::<f32>::from_data(vec![2.0, 3.0, 4.0, 5.0], vec![2, 2]).unwrap();
+        let a = Tensor::<f32>::from_data(vec![1.0, 2.0, 3.0, 4.0], vec![2, 2], Device::CPU).unwrap();
+        let b = Tensor::<f32>::from_data(vec![2.0, 3.0, 4.0, 5.0], vec![2, 2], Device::CPU).unwrap();
 
         let result = a.elementwise_mul(&b).unwrap();
         assert_eq!(*result.get(&[0, 0]).unwrap(), 2.0);  // 1 * 2
@@ -243,8 +248,8 @@ mod tests {
 
     #[test]
     fn test_elementwise_division() {
-        let a = Tensor::<f32>::from_data(vec![8.0, 12.0, 16.0, 20.0], vec![2, 2]).unwrap();
-        let b = Tensor::<f32>::from_data(vec![2.0, 3.0, 4.0, 5.0], vec![2, 2]).unwrap();
+        let a = Tensor::<f32>::from_data(vec![8.0, 12.0, 16.0, 20.0], vec![2, 2], Device::CPU).unwrap();
+        let b = Tensor::<f32>::from_data(vec![2.0, 3.0, 4.0, 5.0], vec![2, 2], Device::CPU).unwrap();
 
         let result = a.elementwise_div(&b).unwrap();
         assert_eq!(*result.get(&[0, 0]).unwrap(), 4.0);  // 8 / 2
@@ -255,13 +260,13 @@ mod tests {
 
     #[test]
     fn test_error_handling_shape_mismatch() {
-        let a = Tensor::<f32>::zeros(vec![2, 3]).unwrap();
-        let b = Tensor::<f32>::zeros(vec![3, 2]).unwrap();
+        let a = Tensor::<f32>::zeros(vec![2, 3], Device::CPU).unwrap();
+        let b = Tensor::<f32>::zeros(vec![3, 2], Device::CPU).unwrap();
 
         let result = a.add(&b);
         assert!(result.is_err());
 
-        let mut a_mut = Tensor::<f32>::zeros(vec![2, 3]).unwrap();
+        let mut a_mut = Tensor::<f32>::zeros(vec![2, 3], Device::CPU).unwrap();
         let result = a_mut.add_mut(&b);
         assert!(result.is_err());
     }

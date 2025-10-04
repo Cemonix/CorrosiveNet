@@ -111,17 +111,18 @@ impl<T> Tensor<T> {
             data,
             shape: self.shape.clone(),
             strides: Self::calculate_strides(&self.shape),
+            device: self.device.clone(),
         }
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::tensor::{Tensor, TensorCore, TensorStorage, TensorScalar};
+    use crate::tensor::{Device, Tensor, TensorCore, TensorScalar, TensorStorage};
 
     #[test]
     fn test_scalar_operations() {
-        let tensor = Tensor::<f32>::from_data(vec![1.0, 2.0, 3.0, 4.0], vec![2, 2]).unwrap();
+        let tensor = Tensor::<f32>::from_data(vec![1.0, 2.0, 3.0, 4.0], vec![2, 2], Device::CPU).unwrap();
 
         // Scalar addition
         let result = tensor.scalar_add(10.0);
@@ -141,7 +142,7 @@ mod tests {
 
     #[test]
     fn test_scalar_operations_mut() {
-        let mut tensor = Tensor::<f32>::from_data(vec![2.0, 4.0, 6.0, 8.0], vec![2, 2]).unwrap();
+        let mut tensor = Tensor::<f32>::from_data(vec![2.0, 4.0, 6.0, 8.0], vec![2, 2], Device::CPU).unwrap();
 
         tensor.scalar_mul_mut(0.5);
         assert_eq!(*tensor.get(&[0, 0]).unwrap(), 1.0);

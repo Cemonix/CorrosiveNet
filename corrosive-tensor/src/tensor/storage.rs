@@ -1,9 +1,11 @@
+use crate::tensor::Device;
+
 use super::{Tensor, TensorError, TensorNum};
 
 pub trait TensorStorage<T> {
-    fn zeros(shape: Vec<usize>) -> Result<Self, TensorError> where Self: Sized;
-    fn ones(shape: Vec<usize>) -> Result<Self, TensorError> where Self: Sized;
-    fn from_data(data: Vec<T>, shape: Vec<usize>) -> Result<Self, TensorError> where Self: Sized;
+    fn zeros(shape: Vec<usize>, device: Device) -> Result<Self, TensorError> where Self: Sized;
+    fn ones(shape: Vec<usize>, device: Device) -> Result<Self, TensorError> where Self: Sized;
+    fn from_data(data: Vec<T>, shape: Vec<usize>, device: Device) -> Result<Self, TensorError> where Self: Sized;
 }
 
 impl<T> TensorStorage<T> for Tensor<T>
@@ -14,10 +16,11 @@ where
     ///
     /// # Arguments
     /// * `shape` - The dimensions of the tensor
+    /// * `device` - The device where the tensor will be allocated (CPU or CUDA)
     ///
     /// # Returns
     /// A new tensor with all elements set to zero
-    fn zeros(shape: Vec<usize>) -> Result<Self, TensorError> {
+    fn zeros(shape: Vec<usize>, device: Device) -> Result<Self, TensorError> {
         Self::validation(&shape)?;
 
         let size: usize = shape.iter().product();
@@ -27,6 +30,7 @@ where
             data: vec![T::default(); size],
             shape,
             strides,
+            device
         })
     }
 
@@ -34,13 +38,14 @@ where
     ///
     /// # Arguments
     /// * `shape` - The dimensions of the tensor
+    /// * `device` - The device where the tensor will be allocated (CPU or CUDA)
     ///
     /// # Returns
     /// A new tensor with all elements set to one
     ///
     /// # Errors
     /// When shape contains zero dimensions
-    fn ones(shape: Vec<usize>) -> Result<Self, TensorError> {
+    fn ones(shape: Vec<usize>, device: Device) -> Result<Self, TensorError> {
         Self::validation(&shape)?;
 
         let size: usize = shape.iter().product();
@@ -50,6 +55,7 @@ where
             data: vec![T::one(); size],
             shape,
             strides,
+            device
         })
     }
 
@@ -58,13 +64,14 @@ where
     /// # Arguments
     /// * `data` - Vector containing the tensor data in row-major order
     /// * `shape` - The dimensions of the tensor
+    /// * `device` - The device where the tensor will be allocated (CPU or CUDA)
     ///
     /// # Returns
     /// A new tensor containing the provided data
     ///
     /// # Errors
     /// When data length does not match shape or shape contains zero dimensions
-    fn from_data(data: Vec<T>, shape: Vec<usize>) -> Result<Self, TensorError> {
+    fn from_data(data: Vec<T>, shape: Vec<usize>, device: Device) -> Result<Self, TensorError> {
         let expected_size: usize = shape.iter().product();
 
         if data.len() != expected_size {
@@ -78,6 +85,7 @@ where
             data,
             shape,
             strides,
+            device
         })
     }
 }

@@ -125,6 +125,10 @@ impl<T> Tensor<T> {
         F: Fn(T, T) -> T,
         T: TensorNum,
     {
+        if !self.has_same_device(other) {
+            return Err(TensorError::new("Tensors are on different devices"));
+        }
+
         if !self.can_broadcast_with(other) {
             return Err(TensorError::new(&format!(
                 "Cannot broadcast shapes {:?} and {:?}",
@@ -156,7 +160,7 @@ impl<T> Tensor<T> {
         }
 
         result_shape.reverse();
-        let mut result = Tensor::zeros(result_shape.clone())?;
+        let mut result = Tensor::zeros(result_shape.clone(), self.device.clone())?;
 
         let total_elements = result.size();
         for i in 0..total_elements {
@@ -201,23 +205,23 @@ impl<T> Tensor<T> {
 
 #[cfg(test)]
 mod tests {
-    use crate::tensor::{Tensor, TensorCore, TensorStorage, TensorBroadcast};
+    use crate::tensor::{Device, Tensor, TensorBroadcast, TensorCore, TensorStorage};
 
     #[test]
     fn test_broadcasting_compatibility() {
-        let a = Tensor::<f32>::zeros(vec![3, 1]).unwrap();
-        let b = Tensor::<f32>::zeros(vec![1, 4]).unwrap();
+        let a = Tensor::<f32>::zeros(vec![3, 1], Device::CPU).unwrap();
+        let b = Tensor::<f32>::zeros(vec![1, 4], Device::CPU).unwrap();
         assert!(a.can_broadcast_with(&b));
 
-        let c = Tensor::<f32>::zeros(vec![3, 2]).unwrap();
-        let d = Tensor::<f32>::zeros(vec![3, 4]).unwrap();
+        let c = Tensor::<f32>::zeros(vec![3, 2], Device::CPU).unwrap();
+        let d = Tensor::<f32>::zeros(vec![3, 4], Device::CPU).unwrap();
         assert!(!c.can_broadcast_with(&d));
     }
 
     #[test]
     fn test_broadcast_add_simple() {
-        let a = Tensor::<f32>::from_data(vec![1.0, 2.0, 3.0], vec![3]).unwrap();
-        let b = Tensor::<f32>::from_data(vec![10.0], vec![1]).unwrap();
+        let a = Tensor::<f32>::from_data(vec![1.0, 2.0, 3.0], vec![3], Device::CPU).unwrap();
+        let b = Tensor::<f32>::from_data(vec![10.0], vec![1], Device::CPU).unwrap();
 
         let result = a.broadcast_add(&b).unwrap();
         assert_eq!(result.shape(), &[3]);
@@ -228,8 +232,8 @@ mod tests {
 
     #[test]
     fn test_broadcast_add_2d() {
-        let a = Tensor::<f32>::from_data(vec![1.0, 2.0, 3.0, 4.0], vec![2, 2]).unwrap();
-        let b = Tensor::<f32>::from_data(vec![10.0, 20.0], vec![1, 2]).unwrap();
+        let a = Tensor::<f32>::from_data(vec![1.0, 2.0, 3.0, 4.0], vec![2, 2], Device::CPU).unwrap();
+        let b = Tensor::<f32>::from_data(vec![10.0, 20.0], vec![1, 2], Device::CPU).unwrap();
 
         let result = a.broadcast_add(&b).unwrap();
         assert_eq!(result.shape(), &[2, 2]);
@@ -241,8 +245,8 @@ mod tests {
 
     #[test]
     fn test_broadcast_mul() {
-        let a = Tensor::<f32>::from_data(vec![1.0, 2.0, 3.0, 4.0], vec![2, 2]).unwrap();
-        let b = Tensor::<f32>::from_data(vec![2.0], vec![1]).unwrap();
+        let a = Tensor::<f32>::from_data(vec![1.0, 2.0, 3.0, 4.0], vec![2, 2], Device::CPU).unwrap();
+        let b = Tensor::<f32>::from_data(vec![2.0], vec![1], Device::CPU).unwrap();
 
         let result = a.broadcast_mul(&b).unwrap();
         assert_eq!(*result.get(&[0, 0]).unwrap(), 2.0);
@@ -253,8 +257,8 @@ mod tests {
 
     #[test]
     fn test_broadcast_error() {
-        let a = Tensor::<f32>::zeros(vec![3, 2]).unwrap();
-        let b = Tensor::<f32>::zeros(vec![3, 4]).unwrap();
+        let a = Tensor::<f32>::zeros(vec![3, 2], Device::CPU).unwrap();
+        let b = Tensor::<f32>::zeros(vec![3, 4], Device::CPU).unwrap();
 
         let result = a.broadcast_add(&b);
         assert!(result.is_err());

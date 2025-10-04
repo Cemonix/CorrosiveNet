@@ -147,7 +147,7 @@ impl<T> Tensor<T> {
     ///
     /// # Returns
     /// A vector containing the multi-dimensional indices
-    pub(super) fn index_to_indices(&self, flat_index: usize) -> Vec<usize> {
+    pub(super) fn flat_to_indices(&self, flat_index: usize) -> Vec<usize> {
         let n = self.shape.len();
         let mut indices = vec![0; n];
         let mut remaining = flat_index;

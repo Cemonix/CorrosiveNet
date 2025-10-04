@@ -38,6 +38,7 @@ where
             data: self.data.clone(),
             shape: new_shape,
             strides: new_strides,
+            device: self.device.clone(),
         })
     }
 
@@ -72,12 +73,13 @@ where
                 data: self.data.clone(),
                 shape: new_shape,
                 strides: new_strides,
+                device: self.device.clone(),
             })
         } else {
             let mut new_data = Vec::with_capacity(self.size());
 
             for i in 0..self.size() {
-                let indices = self.index_to_indices(i);
+                let indices = self.flat_to_indices(i);
                 new_data.push((*self.get(&indices)?).clone());
             }
 
@@ -86,6 +88,7 @@ where
                 data: new_data,
                 shape: new_shape,
                 strides: new_strides,
+                device: self.device.clone(),
             })
         }
     }
@@ -263,17 +266,18 @@ where
             data: self.data.clone(),
             shape: new_shape,
             strides: new_strides,
+            device: self.device.clone(),
         })
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::tensor::{Tensor, TensorCore, TensorStorage, TensorDims, TensorShape};
+    use crate::tensor::{Device, Tensor, TensorCore, TensorDims, TensorShape, TensorStorage};
 
     #[test]
     fn test_transpose() {
-        let tensor = Tensor::<f32>::from_data(vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0], vec![2, 3]).unwrap();
+        let tensor = Tensor::<f32>::from_data(vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0], vec![2, 3], Device::CPU).unwrap();
         let transposed = tensor.transpose().unwrap();
 
         assert_eq!(transposed.shape(), &[3, 2]);
@@ -292,7 +296,8 @@ mod tests {
     fn test_permute_3d() {
         let tensor = Tensor::<f32>::from_data(
             (0..24).map(|x| x as f32).collect(),
-            vec![2, 3, 4]
+            vec![2, 3, 4],
+            Device::CPU
         ).unwrap();
 
         // Permute from [2, 3, 4] to [4, 2, 3] (axes [2, 0, 1])
@@ -306,7 +311,7 @@ mod tests {
 
     #[test]
     fn test_permute_swap_last_two_dims() {
-        let tensor = Tensor::<f32>::zeros(vec![2, 3, 4]).unwrap();
+        let tensor = Tensor::<f32>::zeros(vec![2, 3, 4], Device::CPU).unwrap();
         let swapped = tensor.permute(vec![0, 2, 1]).unwrap();
 
         assert_eq!(swapped.shape(), &[2, 4, 3]);
@@ -315,7 +320,7 @@ mod tests {
 
     #[test]
     fn test_reshape_2d_to_1d() {
-        let tensor = Tensor::<f32>::from_data(vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0], vec![2, 3]).unwrap();
+        let tensor = Tensor::<f32>::from_data(vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0], vec![2, 3], Device::CPU).unwrap();
         let reshaped = tensor.reshape(vec![6]).unwrap();
 
         assert_eq!(reshaped.shape(), &[6]);
@@ -329,7 +334,7 @@ mod tests {
     #[test]
     fn test_reshape_1d_to_2d() {
         // Create real 1D Tensor
-        let tensor = Tensor::<f32>::from_data((1..=12).map(|x| x as f32).collect(), vec![12]).unwrap();
+        let tensor = Tensor::<f32>::from_data((1..=12).map(|x| x as f32).collect(), vec![12], Device::CPU).unwrap();
         let reshaped = tensor.reshape(vec![3, 4]).unwrap();
 
         assert_eq!(reshaped.shape(), &[3, 4]);
@@ -344,7 +349,8 @@ mod tests {
     fn test_reshape_3d_to_2d() {
         let tensor = Tensor::<f32>::from_data(
             (1..=24).map(|x| x as f32).collect(),
-            vec![2, 3, 4]
+            vec![2, 3, 4],
+            Device::CPU
         ).unwrap();
 
         let reshaped = tensor.reshape(vec![6, 4]).unwrap();
@@ -355,7 +361,7 @@ mod tests {
     #[test]
     fn test_squeeze_all_dimensions() {
         // Test squeezing all dimensions of size 1
-        let mut tensor = Tensor::<f32>::from_data(vec![1.0, 2.0, 3.0, 4.0], vec![1, 2, 2, 1]).unwrap();
+        let mut tensor = Tensor::<f32>::from_data(vec![1.0, 2.0, 3.0, 4.0], vec![1, 2, 2, 1], Device::CPU).unwrap();
         tensor.squeeze(TensorDims::All).unwrap();
 
         assert_eq!(tensor.shape(), &[2, 2]);
@@ -365,7 +371,7 @@ mod tests {
 
     #[test]
     fn test_squeeze_single_dimension() {
-        let mut tensor = Tensor::<f32>::from_data(vec![1.0, 2.0, 3.0, 4.0], vec![1, 2, 2]).unwrap();
+        let mut tensor = Tensor::<f32>::from_data(vec![1.0, 2.0, 3.0, 4.0], vec![1, 2, 2], Device::CPU).unwrap();
         tensor.squeeze(TensorDims::Single(0)).unwrap();
 
         assert_eq!(tensor.shape(), &[2, 2]);
@@ -375,7 +381,7 @@ mod tests {
 
     #[test]
     fn test_squeeze_multiple_dimensions() {
-        let mut tensor = Tensor::<f32>::from_data(vec![1.0, 2.0, 3.0, 4.0], vec![1, 2, 1, 2]).unwrap();
+        let mut tensor = Tensor::<f32>::from_data(vec![1.0, 2.0, 3.0, 4.0], vec![1, 2, 1, 2], Device::CPU).unwrap();
         tensor.squeeze(TensorDims::Multiple(vec![0, 2])).unwrap();
 
         assert_eq!(tensor.shape(), &[2, 2]);
@@ -386,21 +392,21 @@ mod tests {
     #[test]
     fn test_unsqueeze_single_dimension() {
         // Add dimension at the beginning
-        let mut tensor1 = Tensor::<f32>::from_data(vec![1.0, 2.0, 3.0, 4.0], vec![2, 2]).unwrap();
+        let mut tensor1 = Tensor::<f32>::from_data(vec![1.0, 2.0, 3.0, 4.0], vec![2, 2], Device::CPU).unwrap();
         tensor1.unsqueeze(TensorDims::Single(0)).unwrap();
         assert_eq!(tensor1.shape(), &[1, 2, 2]);
         assert_eq!(*tensor1.get(&[0, 0, 0]).unwrap(), 1.0);
         assert_eq!(*tensor1.get(&[0, 1, 1]).unwrap(), 4.0);
 
         // Add dimension at the end
-        let mut tensor2 = Tensor::<f32>::from_data(vec![1.0, 2.0, 3.0, 4.0], vec![2, 2]).unwrap();
+        let mut tensor2 = Tensor::<f32>::from_data(vec![1.0, 2.0, 3.0, 4.0], vec![2, 2], Device::CPU).unwrap();
         tensor2.unsqueeze(TensorDims::Single(2)).unwrap();
         assert_eq!(tensor2.shape(), &[2, 2, 1]);
         assert_eq!(*tensor2.get(&[0, 0, 0]).unwrap(), 1.0);
         assert_eq!(*tensor2.get(&[1, 1, 0]).unwrap(), 4.0);
 
         // Add dimension in the middle
-        let mut tensor3 = Tensor::<f32>::from_data(vec![1.0, 2.0, 3.0, 4.0], vec![2, 2]).unwrap();
+        let mut tensor3 = Tensor::<f32>::from_data(vec![1.0, 2.0, 3.0, 4.0], vec![2, 2], Device::CPU).unwrap();
         tensor3.unsqueeze(TensorDims::Single(1)).unwrap();
         assert_eq!(tensor3.shape(), &[2, 1, 2]);
         assert_eq!(*tensor3.get(&[0, 0, 0]).unwrap(), 1.0);
@@ -409,7 +415,7 @@ mod tests {
 
     #[test]
     fn test_unsqueeze_multiple_dimensions() {
-        let mut tensor = Tensor::<f32>::from_data(vec![1.0, 2.0, 3.0, 4.0], vec![2, 2]).unwrap();
+        let mut tensor = Tensor::<f32>::from_data(vec![1.0, 2.0, 3.0, 4.0], vec![2, 2], Device::CPU).unwrap();
 
         // Add multiple dimensions
         tensor.unsqueeze(TensorDims::Multiple(vec![0, 3])).unwrap();
@@ -420,7 +426,7 @@ mod tests {
 
     #[test]
     fn test_squeeze_unsqueeze_roundtrip() {
-        let original = Tensor::<f32>::from_data(vec![1.0, 2.0, 3.0, 4.0], vec![2, 2]).unwrap();
+        let original = Tensor::<f32>::from_data(vec![1.0, 2.0, 3.0, 4.0], vec![2, 2], Device::CPU).unwrap();
 
         // Add dimension and then remove it
         let mut test_tensor = original.clone();
@@ -444,14 +450,14 @@ mod tests {
     #[test]
     fn test_error_handling_transpose() {
         // Test 3D Tensor transpose (not supported)
-        let tensor_3d = Tensor::<f32>::zeros(vec![2, 3, 4]).unwrap();
+        let tensor_3d = Tensor::<f32>::zeros(vec![2, 3, 4], Device::CPU).unwrap();
         let result = tensor_3d.transpose();
         assert!(result.is_err());
     }
 
     #[test]
     fn test_error_handling_permute() {
-        let tensor = Tensor::<f32>::zeros(vec![2, 3, 4]).unwrap();
+        let tensor = Tensor::<f32>::zeros(vec![2, 3, 4], Device::CPU).unwrap();
 
         // Test invalid axis (out of bounds)
         let result = tensor.permute(vec![0, 1, 3]); // Axis 3 doesn't exist
@@ -464,7 +470,7 @@ mod tests {
 
     #[test]
     fn test_error_handling_reshape() {
-        let tensor = Tensor::<f32>::zeros(vec![2, 3]).unwrap(); // 6 elements
+        let tensor = Tensor::<f32>::zeros(vec![2, 3], Device::CPU).unwrap(); // 6 elements
 
         // Test incompatible size
         let result = tensor.reshape(vec![2, 4]); // 8 elements ≠ 6 elements
@@ -477,7 +483,7 @@ mod tests {
 
     #[test]
     fn test_squeeze_error_cases() {
-        let mut tensor = Tensor::<f32>::from_data(vec![1.0, 2.0, 3.0, 4.0], vec![2, 2]).unwrap();
+        let mut tensor = Tensor::<f32>::from_data(vec![1.0, 2.0, 3.0, 4.0], vec![2, 2], Device::CPU).unwrap();
 
         // Try to squeeze dimension that isn't size 1
         let result = tensor.squeeze(TensorDims::Single(0));
@@ -488,14 +494,14 @@ mod tests {
         assert!(result.is_err());
 
         // Try to squeeze all dimensions from a tensor that would become empty
-        let mut scalar_tensor = Tensor::<f32>::from_data(vec![42.0], vec![1]).unwrap();
+        let mut scalar_tensor = Tensor::<f32>::from_data(vec![42.0], vec![1], Device::CPU).unwrap();
         let result = scalar_tensor.squeeze(TensorDims::All);
         assert!(result.is_err());
     }
 
     #[test]
     fn test_unsqueeze_error_cases() {
-        let mut tensor = Tensor::<f32>::from_data(vec![1.0, 2.0, 3.0, 4.0], vec![2, 2]).unwrap();
+        let mut tensor = Tensor::<f32>::from_data(vec![1.0, 2.0, 3.0, 4.0], vec![2, 2], Device::CPU).unwrap();
 
         // Try to use Dims::All (not supported)
         let result = tensor.unsqueeze(TensorDims::All);

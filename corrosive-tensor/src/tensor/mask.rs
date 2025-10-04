@@ -51,6 +51,7 @@ where
             data,
             shape: self.shape.clone(),
             strides: self.strides.clone(),
+            device: self.device.clone(),
         }
     }
 

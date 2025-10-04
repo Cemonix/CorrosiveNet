@@ -141,6 +141,7 @@ where
             data,
             shape: self.shape.clone(),
             strides: self.strides.clone(),
+            device: self.device.clone(),
         }
     }
 }
@@ -167,18 +168,19 @@ impl<T> Tensor<T> {
             data,
             shape: self.shape.clone(),
             strides: self.strides.clone(),
+            device: self.device.clone(),
         }
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::tensor::{Tensor, TensorCore, TensorStorage, TensorComparison};
+    use crate::tensor::{Device, Tensor, TensorComparison, TensorCore, TensorStorage};
 
 
     #[test]
     fn test_greater_than() {
-        let tensor = Tensor::<f32>::from_data(vec![1.0, 3.0, 5.0, 2.0], vec![2, 2]).unwrap();
+        let tensor = Tensor::<f32>::from_data(vec![1.0, 3.0, 5.0, 2.0], vec![2, 2], Device::CPU).unwrap();
         let result = tensor.greater_than(3.0);
 
         assert_eq!(*result.get(&[0, 0]).unwrap(), 0.0); // 1 > 3? No
@@ -189,7 +191,7 @@ mod tests {
 
     #[test]
     fn test_greater_equal() {
-        let tensor = Tensor::<f32>::from_data(vec![1.0, 3.0, 5.0, 2.0], vec![2, 2]).unwrap();
+        let tensor = Tensor::<f32>::from_data(vec![1.0, 3.0, 5.0, 2.0], vec![2, 2], Device::CPU).unwrap();
         let result = tensor.greater_equal(3.0);
 
         assert_eq!(*result.get(&[0, 0]).unwrap(), 0.0); // 1 >= 3? No
@@ -200,7 +202,7 @@ mod tests {
 
     #[test]
     fn test_less_than() {
-        let tensor = Tensor::<f32>::from_data(vec![1.0, 3.0, 5.0, 2.0], vec![2, 2]).unwrap();
+        let tensor = Tensor::<f32>::from_data(vec![1.0, 3.0, 5.0, 2.0], vec![2, 2], Device::CPU).unwrap();
         let result = tensor.less_than(3.0);
 
         assert_eq!(*result.get(&[0, 0]).unwrap(), 1.0); // 1 < 3? Yes
@@ -211,7 +213,7 @@ mod tests {
 
     #[test]
     fn test_equal() {
-        let tensor = Tensor::<f32>::from_data(vec![1.0, 3.0, 3.0, 2.0], vec![2, 2]).unwrap();
+        let tensor = Tensor::<f32>::from_data(vec![1.0, 3.0, 3.0, 2.0], vec![2, 2], Device::CPU).unwrap();
         let result = tensor.equal(3.0);
 
         assert_eq!(*result.get(&[0, 0]).unwrap(), 0.0); // 1 == 3? No
@@ -222,7 +224,7 @@ mod tests {
 
     #[test]
     fn test_clip_max() {
-        let tensor = Tensor::<f32>::from_data(vec![1.0, 5.0, 3.0, 8.0], vec![2, 2]).unwrap();
+        let tensor = Tensor::<f32>::from_data(vec![1.0, 5.0, 3.0, 8.0], vec![2, 2], Device::CPU).unwrap();
         let result = tensor.clip_max(4.0);
 
         assert_eq!(*result.get(&[0, 0]).unwrap(), 1.0); // 1 < 4, unchanged
@@ -233,7 +235,7 @@ mod tests {
 
     #[test]
     fn test_clip_min() {
-        let tensor = Tensor::<f32>::from_data(vec![1.0, 5.0, 3.0, 8.0], vec![2, 2]).unwrap();
+        let tensor = Tensor::<f32>::from_data(vec![1.0, 5.0, 3.0, 8.0], vec![2, 2], Device::CPU).unwrap();
         let result = tensor.clip_min(4.0);
 
         assert_eq!(*result.get(&[0, 0]).unwrap(), 4.0); // 1 < 4, clipped to 4
@@ -244,7 +246,7 @@ mod tests {
 
     #[test]
     fn test_clip() {
-        let tensor = Tensor::<f32>::from_data(vec![1.0, 5.0, 3.0, 8.0], vec![2, 2]).unwrap();
+        let tensor = Tensor::<f32>::from_data(vec![1.0, 5.0, 3.0, 8.0], vec![2, 2], Device::CPU).unwrap();
         let result = tensor.clip(2.0, 6.0);
 
         assert_eq!(*result.get(&[0, 0]).unwrap(), 2.0); // 1 < 2, clipped to 2

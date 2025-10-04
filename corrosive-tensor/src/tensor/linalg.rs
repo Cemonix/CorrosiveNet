@@ -26,6 +26,10 @@ where
     /// - Either tensor is not 2D
     /// - The inner dimensions don't match (A.cols ≠ B.rows)
     fn matmul(&self, other: &Tensor<T>) -> Result<Tensor<T>, TensorError> {
+        if self.has_same_device(other) == false {
+            return Err(TensorError::new("tensors are on different devices"));
+        }
+
         if self.shape().len() != 2 || other.shape().len() != 2 {
             return Err(TensorError::new(&format!(
                 "tensors must be 2D, got {}D and {}D", self.shape().len(), other.shape().len()
@@ -45,7 +49,7 @@ where
         let inner = self.shape()[1];
 
         let result_shape = vec![rows, cols];
-        let mut result = Tensor::zeros(result_shape)?;
+        let mut result = Tensor::zeros(result_shape, self.device.clone())?;
 
         let self_data = &self.data;
         let other_data = &other.data;
@@ -82,12 +86,12 @@ where
 
 #[cfg(test)]
 mod tests {
-    use crate::tensor::{Tensor, TensorCore, TensorStorage, TensorLinAlg};
+    use crate::tensor::{Device, Tensor, TensorCore, TensorLinAlg, TensorStorage};
 
     #[test]
     fn test_tensor_multiplication_basic() {
-        let a = Tensor::<f32>::from_data(vec![1.0, 2.0, 3.0, 4.0], vec![2, 2]).unwrap();
-        let b = Tensor::<f32>::from_data(vec![5.0, 6.0, 7.0, 8.0], vec![2, 2]).unwrap();
+        let a = Tensor::<f32>::from_data(vec![1.0, 2.0, 3.0, 4.0], vec![2, 2], Device::CPU).unwrap();
+        let b = Tensor::<f32>::from_data(vec![5.0, 6.0, 7.0, 8.0], vec![2, 2], Device::CPU).unwrap();
 
         let result = a.matmul(&b).unwrap();
 
@@ -99,8 +103,8 @@ mod tests {
 
     #[test]
     fn test_tensor_multiplication_rectangular() {
-        let a = Tensor::<f32>::from_data(vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0], vec![2, 3]).unwrap();
-        let b = Tensor::<f32>::from_data(vec![7.0, 8.0, 9.0, 10.0, 11.0, 12.0], vec![3, 2]).unwrap();
+        let a = Tensor::<f32>::from_data(vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0], vec![2, 3], Device::CPU).unwrap();
+        let b = Tensor::<f32>::from_data(vec![7.0, 8.0, 9.0, 10.0, 11.0, 12.0], vec![3, 2], Device::CPU).unwrap();
 
         let result = a.matmul(&b).unwrap();
         assert_eq!(result.shape(), &[2, 2]);
@@ -113,14 +117,14 @@ mod tests {
 
     #[test]
     fn test_error_handling_tensor_multiplication() {
-        let a = Tensor::<f32>::zeros(vec![2, 3]).unwrap();
-        let b = Tensor::<f32>::zeros(vec![2, 2]).unwrap();
+        let a = Tensor::<f32>::zeros(vec![2, 3], Device::CPU).unwrap();
+        let b = Tensor::<f32>::zeros(vec![2, 2], Device::CPU).unwrap();
 
         let result = a.matmul(&b);
         assert!(result.is_err());
 
-        let a_3d = Tensor::<f32>::zeros(vec![2, 3, 4]).unwrap();
-        let b_3d = Tensor::<f32>::zeros(vec![2, 3, 4]).unwrap();
+        let a_3d = Tensor::<f32>::zeros(vec![2, 3, 4], Device::CPU).unwrap();
+        let b_3d = Tensor::<f32>::zeros(vec![2, 3, 4], Device::CPU).unwrap();
         let result = a_3d.matmul(&b_3d);
         assert!(result.is_err());
     }

@@ -27,11 +27,45 @@ pub use math::TensorMath;
 pub use comparison::TensorComparison;
 pub use broadcast::TensorBroadcast;
 
+#[derive(Debug, Clone)]
+pub enum Device {
+    CPU,
+    CUDA(usize), // Device index for CUDA
+}
+
+impl Default for Device {
+    fn default() -> Self {
+        Device::CPU
+    }
+}
+
+impl Device {
+    /// Create a CUDA device with default GPU index (0)
+    pub fn cuda() -> Self {
+        Device::CUDA(0)
+    }
+}
+
 #[derive(Clone)]
 pub struct Tensor<T> {
     data: Vec<T>,
     shape: Vec<usize>,
     strides: Vec<usize>,
+    device: Device
+}
+
+impl<T> Tensor<T> {
+    pub fn device(&self) -> &Device {
+        &self.device
+    }
+
+    pub fn has_same_device(&self, other: &Tensor<T>) -> bool {
+        match (&self.device, &other.device) {
+            (Device::CPU, Device::CPU) => true,
+            (Device::CUDA(idx1), Device::CUDA(idx2)) => idx1 == idx2,
+            _ => false,
+        }
+    }
 }
 
 #[derive(Debug)]

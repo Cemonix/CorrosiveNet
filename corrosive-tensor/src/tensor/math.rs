@@ -98,18 +98,19 @@ impl<T> Tensor<T> {
             data,
             shape: self.shape.clone(),
             strides: Self::calculate_strides(&self.shape),
+            device: self.device.clone(),
         }
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::tensor::{Tensor, TensorCore, TensorStorage, TensorMath};
+    use crate::tensor::{Device, Tensor, TensorCore, TensorMath, TensorStorage};
 
 
     #[test]
     fn test_square() {
-        let tensor = Tensor::<f32>::from_data(vec![1.0, 2.0, 3.0, 4.0], vec![2, 2]).unwrap();
+        let tensor = Tensor::<f32>::from_data(vec![1.0, 2.0, 3.0, 4.0], vec![2, 2], Device::CPU).unwrap();
         let result = tensor.square();
 
         assert_eq!(*result.get(&[0, 0]).unwrap(), 1.0);  // 1^2
@@ -120,7 +121,7 @@ mod tests {
 
     #[test]
     fn test_sqrt() {
-        let tensor = Tensor::<f32>::from_data(vec![1.0, 4.0, 9.0, 16.0], vec![2, 2]).unwrap();
+        let tensor = Tensor::<f32>::from_data(vec![1.0, 4.0, 9.0, 16.0], vec![2, 2], Device::CPU).unwrap();
         let result = tensor.sqrt();
 
         assert_eq!(*result.get(&[0, 0]).unwrap(), 1.0); // sqrt(1)
@@ -131,7 +132,7 @@ mod tests {
 
     #[test]
     fn test_exp() {
-        let tensor = Tensor::<f32>::from_data(vec![0.0, 1.0], vec![1, 2]).unwrap();
+        let tensor = Tensor::<f32>::from_data(vec![0.0, 1.0], vec![1, 2], Device::CPU).unwrap();
         let result = tensor.exp();
 
         assert!((result.get(&[0, 0]).unwrap() - 1.0).abs() < 1e-6); // exp(0) ≈ 1
@@ -140,7 +141,7 @@ mod tests {
 
     #[test]
     fn test_log() {
-        let tensor = Tensor::<f32>::from_data(vec![1.0, std::f32::consts::E], vec![1, 2]).unwrap();
+        let tensor = Tensor::<f32>::from_data(vec![1.0, std::f32::consts::E], vec![1, 2], Device::CPU).unwrap();
         let result = tensor.log();
 
         assert!((result.get(&[0, 0]).unwrap() - 0.0).abs() < 1e-6); // ln(1) = 0
@@ -149,7 +150,7 @@ mod tests {
 
     #[test]
     fn test_abs() {
-        let tensor = Tensor::<f32>::from_data(vec![-2.0, -1.0, 0.0, 1.0], vec![2, 2]).unwrap();
+        let tensor = Tensor::<f32>::from_data(vec![-2.0, -1.0, 0.0, 1.0], vec![2, 2], Device::CPU).unwrap();
         let result = tensor.abs();
 
         assert_eq!(*result.get(&[0, 0]).unwrap(), 2.0); // |-2|
@@ -160,7 +161,7 @@ mod tests {
 
     #[test]
     fn test_pow() {
-        let tensor = Tensor::<f32>::from_data(vec![2.0, 3.0, 4.0, 5.0], vec![2, 2]).unwrap();
+        let tensor = Tensor::<f32>::from_data(vec![2.0, 3.0, 4.0, 5.0], vec![2, 2], Device::CPU).unwrap();
         let result = tensor.pow(3.0);
 
         assert_eq!(*result.get(&[0, 0]).unwrap(), 8.0);   // 2^3
