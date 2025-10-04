@@ -118,6 +118,7 @@ dependencies = [
  "criterion",
  "cudarc",
  "num-traits",
+ "once_cell",
  "rand",
  "rand_distr",
 ]

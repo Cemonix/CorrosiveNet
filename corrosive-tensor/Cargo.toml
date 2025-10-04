@@ -14,7 +14,12 @@ path = "src/lib.rs"
 num-traits.workspace = true
 rand.workspace = true
 rand_distr.workspace = true
-cudarc.workspace = true
+cudarc = { workspace = true, optional = true }
+once_cell.workspace = true
+
+[features]
+default = []
+cuda = ["cudarc"]
 
 [dev-dependencies]
 criterion.workspace = true
