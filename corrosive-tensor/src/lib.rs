@@ -1,7 +1,8 @@
 mod tensor;
+mod cuda;
 
 // Core types always available at root
-pub use tensor::{Tensor, TensorError};
+pub use tensor::{Tensor, TensorError, Device};
 
 // Traits available for explicit import
 pub use tensor::{
@@ -11,13 +12,18 @@ pub use tensor::{
     TensorComparison, TensorBroadcast,
 };
 
+// CUDA backend
+pub use cuda::CudaBackend;
+
 // Prelude for convenience
 pub mod prelude {
     pub use crate::tensor::{
-        Tensor, TensorError,
+        Tensor, TensorError, Device,
         TensorElement, TensorNum, TensorSigned, TensorFloat, TensorBool,
         TensorCore, TensorStorage, TensorDims, TensorScalar, TensorShape,
         TensorStats, TensorMask, TensorLinAlg, TensorArithmetic, TensorMath,
         TensorComparison, TensorBroadcast,
     };
+
+    pub use crate::cuda::CudaBackend;
 }
