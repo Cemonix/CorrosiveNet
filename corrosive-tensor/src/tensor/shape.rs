@@ -1,4 +1,4 @@
-use super::{Tensor, TensorError, TensorCore};
+use super::{Tensor, TensorError, TensorCore, TensorStorage, Device};
 use super::dim::TensorDims;
 
 pub trait TensorShape<T> {
@@ -35,10 +35,9 @@ where
         new_strides.swap(0, 1);
 
         Ok(Tensor {
-            data: self.data.clone(),
+            storage: self.storage.clone(),
             shape: new_shape,
             strides: new_strides,
-            device: self.device.clone(),
         })
     }
 
@@ -70,12 +69,13 @@ where
         if self.is_contiguous() {
             let new_strides = Tensor::<T>::calculate_strides(&new_shape);
             Ok(Tensor {
-                data: self.data.clone(),
+                storage: self.storage.clone(),
                 shape: new_shape,
                 strides: new_strides,
-                device: self.device.clone(),
             })
         } else {
+            // For non-contiguous tensors, need to reorder data
+            // First get data to CPU (will handle CUDA tensors)
             let mut new_data = Vec::with_capacity(self.size());
 
             for i in 0..self.size() {
@@ -84,12 +84,23 @@ where
             }
 
             let new_strides = Tensor::<T>::calculate_strides(&new_shape);
-            Ok(Tensor {
-                data: new_data,
-                shape: new_shape,
-                strides: new_strides,
-                device: self.device.clone(),
-            })
+
+            // Preserve device by creating on same device
+            match self.device() {
+                Device::CPU => Ok(Tensor {
+                    storage: TensorStorage::CPU(new_data),
+                    shape: new_shape,
+                    strides: new_strides,
+                }),
+                cuda_device => {
+                    let cpu_tensor = Tensor {
+                        storage: TensorStorage::CPU(new_data),
+                        shape: new_shape,
+                        strides: new_strides,
+                    };
+                    cpu_tensor.to(cuda_device)
+                }
+            }
         }
     }
 
@@ -263,17 +274,16 @@ where
         }
 
         Ok(Tensor {
-            data: self.data.clone(),
+            storage: self.storage.clone(),
             shape: new_shape,
             strides: new_strides,
-            device: self.device.clone(),
         })
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::tensor::{Device, Tensor, TensorCore, TensorDims, TensorShape, TensorStorage};
+    use crate::tensor::{Device, Tensor, TensorCore, TensorDims, TensorShape, TensorInit};
 
     #[test]
     fn test_transpose() {
