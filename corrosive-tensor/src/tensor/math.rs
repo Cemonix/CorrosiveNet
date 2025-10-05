@@ -1,4 +1,7 @@
-use super::{Tensor, TensorNum, TensorFloat};
+use super::{Tensor, TensorNum, TensorFloat, TensorStorage, TensorCore, Device};
+
+#[cfg(feature = "cuda")]
+use super::TensorError;
 
 pub trait TensorMath<T> {
     fn exp(&self) -> Tensor<T> where T: TensorFloat;
@@ -9,103 +12,599 @@ pub trait TensorMath<T> {
     fn pow(&self, exponent: T) -> Tensor<T> where T: TensorFloat;
 }
 
-impl<T> TensorMath<T> for Tensor<T>
-where
-    T: TensorNum,
-{
-    /// Element-wise exponential of the tensor.
-    ///
-    /// # Returns
-    /// A new tensor with the exponential of each element
-    fn exp(&self) -> Tensor<T>
-    where
-        T: TensorFloat,
-    {
-        self.unary_op(|x| x.exp())
+// Trait implementation for f32
+impl TensorMath<f32> for Tensor<f32> {
+    fn exp(&self) -> Tensor<f32> {
+        match self.device() {
+            Device::CPU => self.cpu_exp(),
+            #[cfg(feature = "cuda")]
+            Device::CUDA(_) => self.cuda_exp().expect("CUDA exp failed"),
+            #[cfg(not(feature = "cuda"))]
+            Device::CUDA(_) => panic!("CUDA support not compiled. Rebuild with --features cuda"),
+        }
     }
 
-    /// Element-wise natural logarithm of the tensor.
-    ///
-    /// # Returns
-    /// A new tensor with the natural logarithm of each element
-    fn log(&self) -> Tensor<T>
-    where
-        T: TensorFloat,
-    {
-        self.unary_op(|x| x.ln())
+    fn log(&self) -> Tensor<f32> {
+        match self.device() {
+            Device::CPU => self.cpu_log(),
+            #[cfg(feature = "cuda")]
+            Device::CUDA(_) => self.cuda_log().expect("CUDA log failed"),
+            #[cfg(not(feature = "cuda"))]
+            Device::CUDA(_) => panic!("CUDA support not compiled. Rebuild with --features cuda"),
+        }
     }
 
-    /// Element-wise square root of the tensor.
-    ///
-    /// # Returns
-    /// A new tensor with the square root of each element
-    fn sqrt(&self) -> Tensor<T>
-    where
-        T: TensorFloat,
-    {
-        self.unary_op(|x| x.sqrt())
+    fn sqrt(&self) -> Tensor<f32> {
+        match self.device() {
+            Device::CPU => self.cpu_sqrt(),
+            #[cfg(feature = "cuda")]
+            Device::CUDA(_) => self.cuda_sqrt().expect("CUDA sqrt failed"),
+            #[cfg(not(feature = "cuda"))]
+            Device::CUDA(_) => panic!("CUDA support not compiled. Rebuild with --features cuda"),
+        }
     }
 
-    /// Element-wise square of the tensor.
-    ///
-    /// # Returns
-    /// A new tensor with the square of each element
-    fn square(&self) -> Tensor<T> {
-        self.unary_op(|x| x * x)
+    fn square(&self) -> Tensor<f32> {
+        match self.device() {
+            Device::CPU => self.cpu_square(),
+            #[cfg(feature = "cuda")]
+            Device::CUDA(_) => self.cuda_square().expect("CUDA square failed"),
+            #[cfg(not(feature = "cuda"))]
+            Device::CUDA(_) => panic!("CUDA support not compiled. Rebuild with --features cuda"),
+        }
     }
 
-    /// Element-wise absolute value of the tensor.
-    ///
-    /// # Returns
-    /// A new tensor with the absolute value of each element
-    fn abs(&self) -> Tensor<T>
-    where
-        T: TensorFloat,
-    {
-        self.unary_op(|x| x.abs())
+    fn abs(&self) -> Tensor<f32> {
+        match self.device() {
+            Device::CPU => self.cpu_abs(),
+            #[cfg(feature = "cuda")]
+            Device::CUDA(_) => self.cuda_abs().expect("CUDA abs failed"),
+            #[cfg(not(feature = "cuda"))]
+            Device::CUDA(_) => panic!("CUDA support not compiled. Rebuild with --features cuda"),
+        }
     }
 
-    /// Element-wise power operation on the tensor.
-    ///
-    /// # Arguments
-    /// * `exponent` - The exponent to raise each element to
-    ///
-    /// # Returns
-    /// A new tensor with each element raised to the given power
-    fn pow(&self, exponent: T) -> Tensor<T>
-    where
-        T: TensorFloat,
-    {
-        self.unary_op(|x| x.powf(exponent))
+    fn pow(&self, exponent: f32) -> Tensor<f32> {
+        match self.device() {
+            Device::CPU => self.cpu_pow(exponent),
+            #[cfg(feature = "cuda")]
+            Device::CUDA(_) => self.cuda_pow(exponent).expect("CUDA pow failed"),
+            #[cfg(not(feature = "cuda"))]
+            Device::CUDA(_) => panic!("CUDA support not compiled. Rebuild with --features cuda"),
+        }
     }
 }
 
-impl<T> Tensor<T> {
-    /// Generic helper for unary operations on tensor elements.
-    ///
-    /// # Arguments
-    /// * `op` - The unary operation to apply to each element
-    ///
-    /// # Returns
-    /// A new tensor with the operation applied to all elements
-    fn unary_op<F>(&self, op: F) -> Tensor<T>
+// Trait implementation for f64
+impl TensorMath<f64> for Tensor<f64> {
+    fn exp(&self) -> Tensor<f64> {
+        match self.device() {
+            Device::CPU => self.cpu_exp(),
+            #[cfg(feature = "cuda")]
+            Device::CUDA(_) => self.cuda_exp().expect("CUDA exp failed"),
+            #[cfg(not(feature = "cuda"))]
+            Device::CUDA(_) => panic!("CUDA support not compiled. Rebuild with --features cuda"),
+        }
+    }
+
+    fn log(&self) -> Tensor<f64> {
+        match self.device() {
+            Device::CPU => self.cpu_log(),
+            #[cfg(feature = "cuda")]
+            Device::CUDA(_) => self.cuda_log().expect("CUDA log failed"),
+            #[cfg(not(feature = "cuda"))]
+            Device::CUDA(_) => panic!("CUDA support not compiled. Rebuild with --features cuda"),
+        }
+    }
+
+    fn sqrt(&self) -> Tensor<f64> {
+        match self.device() {
+            Device::CPU => self.cpu_sqrt(),
+            #[cfg(feature = "cuda")]
+            Device::CUDA(_) => self.cuda_sqrt().expect("CUDA sqrt failed"),
+            #[cfg(not(feature = "cuda"))]
+            Device::CUDA(_) => panic!("CUDA support not compiled. Rebuild with --features cuda"),
+        }
+    }
+
+    fn square(&self) -> Tensor<f64> {
+        match self.device() {
+            Device::CPU => self.cpu_square(),
+            #[cfg(feature = "cuda")]
+            Device::CUDA(_) => self.cuda_square().expect("CUDA square failed"),
+            #[cfg(not(feature = "cuda"))]
+            Device::CUDA(_) => panic!("CUDA support not compiled. Rebuild with --features cuda"),
+        }
+    }
+
+    fn abs(&self) -> Tensor<f64> {
+        match self.device() {
+            Device::CPU => self.cpu_abs(),
+            #[cfg(feature = "cuda")]
+            Device::CUDA(_) => self.cuda_abs().expect("CUDA abs failed"),
+            #[cfg(not(feature = "cuda"))]
+            Device::CUDA(_) => panic!("CUDA support not compiled. Rebuild with --features cuda"),
+        }
+    }
+
+    fn pow(&self, exponent: f64) -> Tensor<f64> {
+        match self.device() {
+            Device::CPU => self.cpu_pow(exponent),
+            #[cfg(feature = "cuda")]
+            Device::CUDA(_) => self.cuda_pow(exponent).expect("CUDA pow failed"),
+            #[cfg(not(feature = "cuda"))]
+            Device::CUDA(_) => panic!("CUDA support not compiled. Rebuild with --features cuda"),
+        }
+    }
+}
+
+// CPU implementations
+impl<T: TensorNum> Tensor<T> {
+    fn cpu_exp(&self) -> Tensor<T>
     where
-        F: Fn(T) -> T,
-        T: Copy,
+        T: TensorFloat,
     {
-        let data: Vec<T> = self.data.iter().map(|&x| op(x)).collect();
-        Tensor {
-            data,
-            shape: self.shape.clone(),
-            strides: Self::calculate_strides(&self.shape),
-            device: self.device.clone(),
+        match &self.storage {
+            TensorStorage::CPU(data) => {
+                let result: Vec<T> = data.iter().map(|&x| x.exp()).collect();
+                Tensor {
+                    storage: TensorStorage::CPU(result),
+                    shape: self.shape.clone(),
+                    strides: self.strides.clone(),
+                }
+            }
+            #[cfg(feature = "cuda")]
+            _ => panic!("Expected CPU tensor"),
+        }
+    }
+
+    fn cpu_log(&self) -> Tensor<T>
+    where
+        T: TensorFloat,
+    {
+        match &self.storage {
+            TensorStorage::CPU(data) => {
+                let result: Vec<T> = data.iter().map(|&x| x.ln()).collect();
+                Tensor {
+                    storage: TensorStorage::CPU(result),
+                    shape: self.shape.clone(),
+                    strides: self.strides.clone(),
+                }
+            }
+            #[cfg(feature = "cuda")]
+            _ => panic!("Expected CPU tensor"),
+        }
+    }
+
+    fn cpu_sqrt(&self) -> Tensor<T>
+    where
+        T: TensorFloat,
+    {
+        match &self.storage {
+            TensorStorage::CPU(data) => {
+                let result: Vec<T> = data.iter().map(|&x| x.sqrt()).collect();
+                Tensor {
+                    storage: TensorStorage::CPU(result),
+                    shape: self.shape.clone(),
+                    strides: self.strides.clone(),
+                }
+            }
+            #[cfg(feature = "cuda")]
+            _ => panic!("Expected CPU tensor"),
+        }
+    }
+
+    fn cpu_square(&self) -> Tensor<T> {
+        match &self.storage {
+            TensorStorage::CPU(data) => {
+                let result: Vec<T> = data.iter().map(|&x| x * x).collect();
+                Tensor {
+                    storage: TensorStorage::CPU(result),
+                    shape: self.shape.clone(),
+                    strides: self.strides.clone(),
+                }
+            }
+            #[cfg(feature = "cuda")]
+            _ => panic!("Expected CPU tensor"),
+        }
+    }
+
+    fn cpu_abs(&self) -> Tensor<T>
+    where
+        T: TensorFloat,
+    {
+        match &self.storage {
+            TensorStorage::CPU(data) => {
+                let result: Vec<T> = data.iter().map(|&x| x.abs()).collect();
+                Tensor {
+                    storage: TensorStorage::CPU(result),
+                    shape: self.shape.clone(),
+                    strides: self.strides.clone(),
+                }
+            }
+            #[cfg(feature = "cuda")]
+            _ => panic!("Expected CPU tensor"),
+        }
+    }
+
+    fn cpu_pow(&self, exponent: T) -> Tensor<T>
+    where
+        T: TensorFloat,
+    {
+        match &self.storage {
+            TensorStorage::CPU(data) => {
+                let result: Vec<T> = data.iter().map(|&x| x.powf(exponent)).collect();
+                Tensor {
+                    storage: TensorStorage::CPU(result),
+                    shape: self.shape.clone(),
+                    strides: self.strides.clone(),
+                }
+            }
+            #[cfg(feature = "cuda")]
+            _ => panic!("Expected CPU tensor"),
+        }
+    }
+}
+
+// CUDA implementations for f32
+#[cfg(feature = "cuda")]
+impl Tensor<f32> {
+    fn cuda_exp(&self) -> Result<Tensor<f32>, TensorError> {
+        use corrosive_cuda::{CudaBackend, kernels::ElementwiseKernels};
+
+        match &self.storage {
+            TensorStorage::CUDA { context, buffer, device_idx } => {
+                let backend = CudaBackend::new(*device_idx)
+                    .map_err(|e| TensorError::new(&format!("CUDA backend error: {}", e)))?;
+
+                let n = self.size();
+                let mut output = context.alloc_zeros::<f32>(n)
+                    .map_err(|e| TensorError::new(&format!("CUDA alloc failed: {}", e)))?;
+
+                ElementwiseKernels::exp_f32(&backend, buffer, &mut output, n)
+                    .map_err(|e| TensorError::new(&format!("CUDA kernel launch failed: {}", e)))?;
+
+                Ok(Tensor {
+                    storage: TensorStorage::CUDA {
+                        context: context.clone(),
+                        buffer: output,
+                        device_idx: *device_idx,
+                    },
+                    shape: self.shape.clone(),
+                    strides: self.strides.clone(),
+                })
+            }
+            _ => Err(TensorError::new("Expected CUDA tensor")),
+        }
+    }
+
+    fn cuda_log(&self) -> Result<Tensor<f32>, TensorError> {
+        use corrosive_cuda::{CudaBackend, kernels::ElementwiseKernels};
+
+        match &self.storage {
+            TensorStorage::CUDA { context, buffer, device_idx } => {
+                let backend = CudaBackend::new(*device_idx)
+                    .map_err(|e| TensorError::new(&format!("CUDA backend error: {}", e)))?;
+
+                let n = self.size();
+                let mut output = context.alloc_zeros::<f32>(n)
+                    .map_err(|e| TensorError::new(&format!("CUDA alloc failed: {}", e)))?;
+
+                ElementwiseKernels::log_f32(&backend, buffer, &mut output, n)
+                    .map_err(|e| TensorError::new(&format!("CUDA kernel launch failed: {}", e)))?;
+
+                Ok(Tensor {
+                    storage: TensorStorage::CUDA {
+                        context: context.clone(),
+                        buffer: output,
+                        device_idx: *device_idx,
+                    },
+                    shape: self.shape.clone(),
+                    strides: self.strides.clone(),
+                })
+            }
+            _ => Err(TensorError::new("Expected CUDA tensor")),
+        }
+    }
+
+    fn cuda_sqrt(&self) -> Result<Tensor<f32>, TensorError> {
+        use corrosive_cuda::{CudaBackend, kernels::ElementwiseKernels};
+
+        match &self.storage {
+            TensorStorage::CUDA { context, buffer, device_idx } => {
+                let backend = CudaBackend::new(*device_idx)
+                    .map_err(|e| TensorError::new(&format!("CUDA backend error: {}", e)))?;
+
+                let n = self.size();
+                let mut output = context.alloc_zeros::<f32>(n)
+                    .map_err(|e| TensorError::new(&format!("CUDA alloc failed: {}", e)))?;
+
+                ElementwiseKernels::sqrt_f32(&backend, buffer, &mut output, n)
+                    .map_err(|e| TensorError::new(&format!("CUDA kernel launch failed: {}", e)))?;
+
+                Ok(Tensor {
+                    storage: TensorStorage::CUDA {
+                        context: context.clone(),
+                        buffer: output,
+                        device_idx: *device_idx,
+                    },
+                    shape: self.shape.clone(),
+                    strides: self.strides.clone(),
+                })
+            }
+            _ => Err(TensorError::new("Expected CUDA tensor")),
+        }
+    }
+
+    fn cuda_square(&self) -> Result<Tensor<f32>, TensorError> {
+        use corrosive_cuda::{CudaBackend, kernels::ElementwiseKernels};
+
+        match &self.storage {
+            TensorStorage::CUDA { context, buffer, device_idx } => {
+                let backend = CudaBackend::new(*device_idx)
+                    .map_err(|e| TensorError::new(&format!("CUDA backend error: {}", e)))?;
+
+                let n = self.size();
+                let mut output = context.alloc_zeros::<f32>(n)
+                    .map_err(|e| TensorError::new(&format!("CUDA alloc failed: {}", e)))?;
+
+                ElementwiseKernels::square_f32(&backend, buffer, &mut output, n)
+                    .map_err(|e| TensorError::new(&format!("CUDA kernel launch failed: {}", e)))?;
+
+                Ok(Tensor {
+                    storage: TensorStorage::CUDA {
+                        context: context.clone(),
+                        buffer: output,
+                        device_idx: *device_idx,
+                    },
+                    shape: self.shape.clone(),
+                    strides: self.strides.clone(),
+                })
+            }
+            _ => Err(TensorError::new("Expected CUDA tensor")),
+        }
+    }
+
+    fn cuda_abs(&self) -> Result<Tensor<f32>, TensorError> {
+        use corrosive_cuda::{CudaBackend, kernels::ElementwiseKernels};
+
+        match &self.storage {
+            TensorStorage::CUDA { context, buffer, device_idx } => {
+                let backend = CudaBackend::new(*device_idx)
+                    .map_err(|e| TensorError::new(&format!("CUDA backend error: {}", e)))?;
+
+                let n = self.size();
+                let mut output = context.alloc_zeros::<f32>(n)
+                    .map_err(|e| TensorError::new(&format!("CUDA alloc failed: {}", e)))?;
+
+                ElementwiseKernels::abs_f32(&backend, buffer, &mut output, n)
+                    .map_err(|e| TensorError::new(&format!("CUDA kernel launch failed: {}", e)))?;
+
+                Ok(Tensor {
+                    storage: TensorStorage::CUDA {
+                        context: context.clone(),
+                        buffer: output,
+                        device_idx: *device_idx,
+                    },
+                    shape: self.shape.clone(),
+                    strides: self.strides.clone(),
+                })
+            }
+            _ => Err(TensorError::new("Expected CUDA tensor")),
+        }
+    }
+
+    fn cuda_pow(&self, exponent: f32) -> Result<Tensor<f32>, TensorError> {
+        use corrosive_cuda::{CudaBackend, kernels::ElementwiseKernels};
+
+        match &self.storage {
+            TensorStorage::CUDA { context, buffer, device_idx } => {
+                let backend = CudaBackend::new(*device_idx)
+                    .map_err(|e| TensorError::new(&format!("CUDA backend error: {}", e)))?;
+
+                let n = self.size();
+                let mut output = context.alloc_zeros::<f32>(n)
+                    .map_err(|e| TensorError::new(&format!("CUDA alloc failed: {}", e)))?;
+
+                ElementwiseKernels::pow_scalar_f32(&backend, buffer, exponent, &mut output, n)
+                    .map_err(|e| TensorError::new(&format!("CUDA kernel launch failed: {}", e)))?;
+
+                Ok(Tensor {
+                    storage: TensorStorage::CUDA {
+                        context: context.clone(),
+                        buffer: output,
+                        device_idx: *device_idx,
+                    },
+                    shape: self.shape.clone(),
+                    strides: self.strides.clone(),
+                })
+            }
+            _ => Err(TensorError::new("Expected CUDA tensor")),
+        }
+    }
+}
+
+// CUDA implementations for f64
+#[cfg(feature = "cuda")]
+impl Tensor<f64> {
+    fn cuda_exp(&self) -> Result<Tensor<f64>, TensorError> {
+        use corrosive_cuda::{CudaBackend, kernels::ElementwiseKernels};
+
+        match &self.storage {
+            TensorStorage::CUDA { context, buffer, device_idx } => {
+                let backend = CudaBackend::new(*device_idx)
+                    .map_err(|e| TensorError::new(&format!("CUDA backend error: {}", e)))?;
+
+                let n = self.size();
+                let mut output = context.alloc_zeros::<f64>(n)
+                    .map_err(|e| TensorError::new(&format!("CUDA alloc failed: {}", e)))?;
+
+                ElementwiseKernels::exp_f64(&backend, buffer, &mut output, n)
+                    .map_err(|e| TensorError::new(&format!("CUDA kernel launch failed: {}", e)))?;
+
+                Ok(Tensor {
+                    storage: TensorStorage::CUDA {
+                        context: context.clone(),
+                        buffer: output,
+                        device_idx: *device_idx,
+                    },
+                    shape: self.shape.clone(),
+                    strides: self.strides.clone(),
+                })
+            }
+            _ => Err(TensorError::new("Expected CUDA tensor")),
+        }
+    }
+
+    fn cuda_log(&self) -> Result<Tensor<f64>, TensorError> {
+        use corrosive_cuda::{CudaBackend, kernels::ElementwiseKernels};
+
+        match &self.storage {
+            TensorStorage::CUDA { context, buffer, device_idx } => {
+                let backend = CudaBackend::new(*device_idx)
+                    .map_err(|e| TensorError::new(&format!("CUDA backend error: {}", e)))?;
+
+                let n = self.size();
+                let mut output = context.alloc_zeros::<f64>(n)
+                    .map_err(|e| TensorError::new(&format!("CUDA alloc failed: {}", e)))?;
+
+                ElementwiseKernels::log_f64(&backend, buffer, &mut output, n)
+                    .map_err(|e| TensorError::new(&format!("CUDA kernel launch failed: {}", e)))?;
+
+                Ok(Tensor {
+                    storage: TensorStorage::CUDA {
+                        context: context.clone(),
+                        buffer: output,
+                        device_idx: *device_idx,
+                    },
+                    shape: self.shape.clone(),
+                    strides: self.strides.clone(),
+                })
+            }
+            _ => Err(TensorError::new("Expected CUDA tensor")),
+        }
+    }
+
+    fn cuda_sqrt(&self) -> Result<Tensor<f64>, TensorError> {
+        use corrosive_cuda::{CudaBackend, kernels::ElementwiseKernels};
+
+        match &self.storage {
+            TensorStorage::CUDA { context, buffer, device_idx } => {
+                let backend = CudaBackend::new(*device_idx)
+                    .map_err(|e| TensorError::new(&format!("CUDA backend error: {}", e)))?;
+
+                let n = self.size();
+                let mut output = context.alloc_zeros::<f64>(n)
+                    .map_err(|e| TensorError::new(&format!("CUDA alloc failed: {}", e)))?;
+
+                ElementwiseKernels::sqrt_f64(&backend, buffer, &mut output, n)
+                    .map_err(|e| TensorError::new(&format!("CUDA kernel launch failed: {}", e)))?;
+
+                Ok(Tensor {
+                    storage: TensorStorage::CUDA {
+                        context: context.clone(),
+                        buffer: output,
+                        device_idx: *device_idx,
+                    },
+                    shape: self.shape.clone(),
+                    strides: self.strides.clone(),
+                })
+            }
+            _ => Err(TensorError::new("Expected CUDA tensor")),
+        }
+    }
+
+    fn cuda_square(&self) -> Result<Tensor<f64>, TensorError> {
+        use corrosive_cuda::{CudaBackend, kernels::ElementwiseKernels};
+
+        match &self.storage {
+            TensorStorage::CUDA { context, buffer, device_idx } => {
+                let backend = CudaBackend::new(*device_idx)
+                    .map_err(|e| TensorError::new(&format!("CUDA backend error: {}", e)))?;
+
+                let n = self.size();
+                let mut output = context.alloc_zeros::<f64>(n)
+                    .map_err(|e| TensorError::new(&format!("CUDA alloc failed: {}", e)))?;
+
+                ElementwiseKernels::square_f64(&backend, buffer, &mut output, n)
+                    .map_err(|e| TensorError::new(&format!("CUDA kernel launch failed: {}", e)))?;
+
+                Ok(Tensor {
+                    storage: TensorStorage::CUDA {
+                        context: context.clone(),
+                        buffer: output,
+                        device_idx: *device_idx,
+                    },
+                    shape: self.shape.clone(),
+                    strides: self.strides.clone(),
+                })
+            }
+            _ => Err(TensorError::new("Expected CUDA tensor")),
+        }
+    }
+
+    fn cuda_abs(&self) -> Result<Tensor<f64>, TensorError> {
+        use corrosive_cuda::{CudaBackend, kernels::ElementwiseKernels};
+
+        match &self.storage {
+            TensorStorage::CUDA { context, buffer, device_idx } => {
+                let backend = CudaBackend::new(*device_idx)
+                    .map_err(|e| TensorError::new(&format!("CUDA backend error: {}", e)))?;
+
+                let n = self.size();
+                let mut output = context.alloc_zeros::<f64>(n)
+                    .map_err(|e| TensorError::new(&format!("CUDA alloc failed: {}", e)))?;
+
+                ElementwiseKernels::abs_f64(&backend, buffer, &mut output, n)
+                    .map_err(|e| TensorError::new(&format!("CUDA kernel launch failed: {}", e)))?;
+
+                Ok(Tensor {
+                    storage: TensorStorage::CUDA {
+                        context: context.clone(),
+                        buffer: output,
+                        device_idx: *device_idx,
+                    },
+                    shape: self.shape.clone(),
+                    strides: self.strides.clone(),
+                })
+            }
+            _ => Err(TensorError::new("Expected CUDA tensor")),
+        }
+    }
+
+    fn cuda_pow(&self, exponent: f64) -> Result<Tensor<f64>, TensorError> {
+        use corrosive_cuda::{CudaBackend, kernels::ElementwiseKernels};
+
+        match &self.storage {
+            TensorStorage::CUDA { context, buffer, device_idx } => {
+                let backend = CudaBackend::new(*device_idx)
+                    .map_err(|e| TensorError::new(&format!("CUDA backend error: {}", e)))?;
+
+                let n = self.size();
+                let mut output = context.alloc_zeros::<f64>(n)
+                    .map_err(|e| TensorError::new(&format!("CUDA alloc failed: {}", e)))?;
+
+                ElementwiseKernels::pow_scalar_f64(&backend, buffer, exponent, &mut output, n)
+                    .map_err(|e| TensorError::new(&format!("CUDA kernel launch failed: {}", e)))?;
+
+                Ok(Tensor {
+                    storage: TensorStorage::CUDA {
+                        context: context.clone(),
+                        buffer: output,
+                        device_idx: *device_idx,
+                    },
+                    shape: self.shape.clone(),
+                    strides: self.strides.clone(),
+                })
+            }
+            _ => Err(TensorError::new("Expected CUDA tensor")),
         }
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::tensor::{Device, Tensor, TensorCore, TensorMath, TensorStorage};
+    use crate::tensor::{Device, Tensor, TensorCore, TensorMath, TensorInit};
 
 
     #[test]

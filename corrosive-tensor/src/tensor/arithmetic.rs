@@ -1,4 +1,4 @@
-use super::{Tensor, TensorError, TensorNum};
+use super::{Tensor, TensorError, TensorNum, TensorStorage, TensorCore, Device};
 
 pub trait TensorArithmetic<T> {
     fn add(&self, other: &Tensor<T>) -> Result<Tensor<T>, TensorError>;
@@ -24,9 +24,26 @@ where
     /// A new tensor containing the element-wise sum
     ///
     /// # Errors
-    /// When shapes do not match
+    /// When shapes do not match or tensors are on different devices
     fn add(&self, other: &Tensor<T>) -> Result<Tensor<T>, TensorError> {
-        self.elementwise_op(other, |a, b| a + b)
+        if self.shape != other.shape {
+            return Err(TensorError::new("Shapes do not match for addition"));
+        }
+
+        if !self.has_same_device(other) {
+            return Err(TensorError::new(
+                "Tensors must be on the same device. Use .to(device) to move tensors."
+            ));
+        }
+
+        match self.device() {
+            Device::CPU => self.cpu_add(other),
+            #[cfg(feature = "cuda")]
+            Device::CUDA(_) => self.cuda_add(other),
+            #[cfg(not(feature = "cuda"))] Device::CUDA(_) => {
+                Err(TensorError::new("CUDA support not compiled. Rebuild with --features cuda"))
+            }
+        }
     }
 
     /// In-place element-wise addition of two tensors.
@@ -38,9 +55,26 @@ where
     /// Unit type on success
     ///
     /// # Errors
-    /// When shapes do not match
+    /// When shapes do not match or tensors are on different devices
     fn add_mut(&mut self, other: &Tensor<T>) -> Result<(), TensorError> {
-        self.elementwise_op_mut(other, |a, b| a + b)
+        if self.shape != other.shape {
+            return Err(TensorError::new("Shapes do not match for addition"));
+        }
+
+        if !self.has_same_device(other) {
+            return Err(TensorError::new(
+                "Tensors must be on the same device. Use .to(device) to move tensors."
+            ));
+        }
+
+        match self.device() {
+            Device::CPU => self.cpu_add_mut(other),
+            #[cfg(feature = "cuda")]
+            Device::CUDA(_) => self.cuda_add_mut(other),
+            #[cfg(not(feature = "cuda"))] Device::CUDA(_) => {
+                Err(TensorError::new("CUDA support not compiled. Rebuild with --features cuda"))
+            }
+        }
     }
 
     /// Element-wise subtraction of two tensors.
@@ -52,9 +86,26 @@ where
     /// A new tensor containing the element-wise difference
     ///
     /// # Errors
-    /// When shapes do not match
+    /// When shapes do not match or tensors are on different devices
     fn sub(&self, other: &Tensor<T>) -> Result<Tensor<T>, TensorError> {
-        self.elementwise_op(other, |a, b| a - b)
+        if self.shape != other.shape {
+            return Err(TensorError::new("Shapes do not match for subtraction"));
+        }
+
+        if !self.has_same_device(other) {
+            return Err(TensorError::new(
+                "Tensors must be on the same device. Use .to(device) to move tensors."
+            ));
+        }
+
+        match self.device() {
+            Device::CPU => self.cpu_sub(other),
+            #[cfg(feature = "cuda")]
+            Device::CUDA(_) => self.cuda_sub(other),
+            #[cfg(not(feature = "cuda"))] Device::CUDA(_) => {
+                Err(TensorError::new("CUDA support not compiled. Rebuild with --features cuda"))
+            }
+        }
     }
 
     /// In-place element-wise subtraction of two tensors.
@@ -66,9 +117,26 @@ where
     /// Unit type on success
     ///
     /// # Errors
-    /// When shapes do not match
+    /// When shapes do not match or tensors are on different devices
     fn sub_mut(&mut self, other: &Tensor<T>) -> Result<(), TensorError> {
-        self.elementwise_op_mut(other, |a, b| a - b)
+        if self.shape != other.shape {
+            return Err(TensorError::new("Shapes do not match for subtraction"));
+        }
+
+        if !self.has_same_device(other) {
+            return Err(TensorError::new(
+                "Tensors must be on the same device. Use .to(device) to move tensors."
+            ));
+        }
+
+        match self.device() {
+            Device::CPU => self.cpu_sub_mut(other),
+            #[cfg(feature = "cuda")]
+            Device::CUDA(_) => self.cuda_sub_mut(other),
+            #[cfg(not(feature = "cuda"))] Device::CUDA(_) => {
+                Err(TensorError::new("CUDA support not compiled. Rebuild with --features cuda"))
+            }
+        }
     }
 
     /// Element-wise multiplication of two tensors.
@@ -80,9 +148,26 @@ where
     /// A new tensor containing the element-wise product
     ///
     /// # Errors
-    /// When shapes do not match
+    /// When shapes do not match or tensors are on different devices
     fn elementwise_mul(&self, other: &Tensor<T>) -> Result<Tensor<T>, TensorError> {
-        self.elementwise_op(other, |a, b| a * b)
+        if self.shape != other.shape {
+            return Err(TensorError::new("Shapes do not match for multiplication"));
+        }
+
+        if !self.has_same_device(other) {
+            return Err(TensorError::new(
+                "Tensors must be on the same device. Use .to(device) to move tensors."
+            ));
+        }
+
+        match self.device() {
+            Device::CPU => self.cpu_mul(other),
+            #[cfg(feature = "cuda")]
+            Device::CUDA(_) => self.cuda_mul(other),
+            #[cfg(not(feature = "cuda"))] Device::CUDA(_) => {
+                Err(TensorError::new("CUDA support not compiled. Rebuild with --features cuda"))
+            }
+        }
     }
 
     /// In-place element-wise multiplication of two tensors.
@@ -94,9 +179,26 @@ where
     /// Unit type on success
     ///
     /// # Errors
-    /// When shapes do not match
+    /// When shapes do not match or tensors are on different devices
     fn elementwise_mul_mut(&mut self, other: &Tensor<T>) -> Result<(), TensorError> {
-        self.elementwise_op_mut(other, |a, b| a * b)
+        if self.shape != other.shape {
+            return Err(TensorError::new("Shapes do not match for multiplication"));
+        }
+
+        if !self.has_same_device(other) {
+            return Err(TensorError::new(
+                "Tensors must be on the same device. Use .to(device) to move tensors."
+            ));
+        }
+
+        match self.device() {
+            Device::CPU => self.cpu_mul_mut(other),
+            #[cfg(feature = "cuda")]
+            Device::CUDA(_) => self.cuda_mul_mut(other),
+            #[cfg(not(feature = "cuda"))] Device::CUDA(_) => {
+                Err(TensorError::new("CUDA support not compiled. Rebuild with --features cuda"))
+            }
+        }
     }
 
     /// Element-wise division of two tensors.
@@ -108,9 +210,26 @@ where
     /// A new tensor containing the element-wise quotient
     ///
     /// # Errors
-    /// When shapes do not match
+    /// When shapes do not match or tensors are on different devices
     fn elementwise_div(&self, other: &Tensor<T>) -> Result<Tensor<T>, TensorError> {
-        self.elementwise_op(other, |a, b| a / b)
+        if self.shape != other.shape {
+            return Err(TensorError::new("Shapes do not match for division"));
+        }
+
+        if !self.has_same_device(other) {
+            return Err(TensorError::new(
+                "Tensors must be on the same device. Use .to(device) to move tensors."
+            ));
+        }
+
+        match self.device() {
+            Device::CPU => self.cpu_div(other),
+            #[cfg(feature = "cuda")]
+            Device::CUDA(_) => self.cuda_div(other),
+            #[cfg(not(feature = "cuda"))] Device::CUDA(_) => {
+                Err(TensorError::new("CUDA support not compiled. Rebuild with --features cuda"))
+            }
+        }
     }
 
     /// In-place element-wise division of two tensors.
@@ -122,83 +241,481 @@ where
     /// Unit type on success
     ///
     /// # Errors
-    /// When shapes do not match
+    /// When shapes do not match or tensors are on different devices
     fn elementwise_div_mut(&mut self, other: &Tensor<T>) -> Result<(), TensorError> {
-        self.elementwise_op_mut(other, |a, b| a / b)
-    }
-}
-
-impl<T> Tensor<T> {
-    /// Generic helper for element-wise operations between two tensors.
-    ///
-    /// # Arguments
-    /// * `other` - The other tensor to operate with
-    /// * `op` - The binary operation to apply element-wise
-    ///
-    /// # Returns
-    /// A new tensor containing the result of the element-wise operation
-    ///
-    /// # Errors
-    /// When shapes do not match
-    pub(super) fn elementwise_op<F>(&self, other: &Tensor<T>, op: F) -> Result<Tensor<T>, TensorError>
-    where
-        F: Fn(T, T) -> T,
-        T: Copy,
-    {
         if self.shape != other.shape {
-            return Err(TensorError::new("Shapes do not match for operation"));
+            return Err(TensorError::new("Shapes do not match for division"));
         }
 
         if !self.has_same_device(other) {
-            return Err(TensorError::new("Tensors are on different devices"));
+            return Err(TensorError::new(
+                "Tensors must be on the same device. Use .to(device) to move tensors."
+            ));
         }
 
-        let data: Vec<T> = self
-            .data
-            .iter()
-            .zip(other.data.iter())
-            .map(|(a, b)| op(*a, *b))
-            .collect();
+        match self.device() {
+            Device::CPU => self.cpu_div_mut(other),
+            #[cfg(feature = "cuda")]
+            Device::CUDA(_) => self.cuda_div_mut(other),
+            #[cfg(not(feature = "cuda"))] Device::CUDA(_) => {
+                Err(TensorError::new("CUDA support not compiled. Rebuild with --features cuda"))
+            }
+        }
+    }
+}
 
-        Ok(Tensor {
-            data,
-            shape: self.shape.clone(),
-            strides: Self::calculate_strides(&self.shape),
-            device: self.device.clone(),
-        })
+// CPU implementations
+impl<T: TensorNum> Tensor<T> {
+    fn cpu_add(&self, other: &Tensor<T>) -> Result<Tensor<T>, TensorError> {
+        if self.shape != other.shape {
+            return Err(TensorError::new("Shapes do not match for addition"));
+        }
+
+        match (&self.storage, &other.storage) {
+            (TensorStorage::CPU(self_data), TensorStorage::CPU(other_data)) => {
+                let data = self_data
+                    .iter()
+                    .zip(other_data.iter())
+                    .map(|(a, b)| *a + *b)
+                    .collect();
+
+                Ok(Tensor {
+                    storage: TensorStorage::CPU(data),
+                    shape: self.shape.clone(),
+                    strides: self.strides.clone(),
+                })
+            }
+        }
     }
 
-    /// Generic helper for in-place element-wise operations between two tensors.
-    ///
-    /// # Arguments
-    /// * `other` - The other tensor to operate with
-    /// * `op` - The binary operation to apply element-wise
-    ///
-    /// # Returns
-    /// Unit type on success
-    ///
-    /// # Errors
-    /// When shapes do not match
-    pub(super) fn elementwise_op_mut<F>(&mut self, other: &Tensor<T>, op: F) -> Result<(), TensorError>
-    where
-        F: Fn(T, T) -> T,
-        T: Copy,
-    {
-        if self.shape != other.shape {
-            return Err(TensorError::new("Shapes do not match for operation"));
+    fn cpu_add_mut(&mut self, other: &Tensor<T>) -> Result<(), TensorError> {
+        match (&mut self.storage, &other.storage) {
+            (TensorStorage::CPU(self_data), TensorStorage::CPU(other_data)) => {
+                for (a, b) in self_data.iter_mut().zip(other_data.iter()) {
+                    *a = *a + *b;
+                }
+                Ok(())
+            }
         }
+    }
 
-        for (a, b) in self.data.iter_mut().zip(other.data.iter()) {
-            *a = op(*a, *b);
+    fn cpu_sub(&self, other: &Tensor<T>) -> Result<Tensor<T>, TensorError> {
+        match (&self.storage, &other.storage) {
+            (TensorStorage::CPU(self_data), TensorStorage::CPU(other_data)) => {
+                let data: Vec<T> = self_data
+                    .iter()
+                    .zip(other_data.iter())
+                    .map(|(a, b)| *a - *b)
+                    .collect();
+
+                Ok(Tensor {
+                    storage: TensorStorage::CPU(data),
+                    shape: self.shape.clone(),
+                    strides: self.strides.clone(),
+                })
+            }
+            #[cfg(feature = "cuda")]
+            _ => Err(TensorError::new("Expected CPU tensor")),
         }
+    }
 
+    fn cpu_sub_mut(&mut self, other: &Tensor<T>) -> Result<(), TensorError> {
+        match (&mut self.storage, &other.storage) {
+            (TensorStorage::CPU(self_data), TensorStorage::CPU(other_data)) => {
+                for (a, b) in self_data.iter_mut().zip(other_data.iter()) {
+                    *a = *a - *b;
+                }
+                Ok(())
+            }
+            #[cfg(feature = "cuda")]
+            _ => Err(TensorError::new("Device mismatch")),
+        }
+    }
+
+    fn cpu_mul(&self, other: &Tensor<T>) -> Result<Tensor<T>, TensorError> {
+        match (&self.storage, &other.storage) {
+            (TensorStorage::CPU(self_data), TensorStorage::CPU(other_data)) => {
+                let data: Vec<T> = self_data
+                    .iter()
+                    .zip(other_data.iter())
+                    .map(|(a, b)| *a * *b)
+                    .collect();
+
+                Ok(Tensor {
+                    storage: TensorStorage::CPU(data),
+                    shape: self.shape.clone(),
+                    strides: self.strides.clone(),
+                })
+            }
+            #[cfg(feature = "cuda")]
+            _ => Err(TensorError::new("Expected CPU tensor")),
+        }
+    }
+
+    fn cpu_mul_mut(&mut self, other: &Tensor<T>) -> Result<(), TensorError> {
+        match (&mut self.storage, &other.storage) {
+            (TensorStorage::CPU(self_data), TensorStorage::CPU(other_data)) => {
+                for (a, b) in self_data.iter_mut().zip(other_data.iter()) {
+                    *a = *a * *b;
+                }
+                Ok(())
+            }
+            #[cfg(feature = "cuda")]
+            _ => Err(TensorError::new("Device mismatch")),
+        }
+    }
+
+    fn cpu_div(&self, other: &Tensor<T>) -> Result<Tensor<T>, TensorError> {
+        match (&self.storage, &other.storage) {
+            (TensorStorage::CPU(self_data), TensorStorage::CPU(other_data)) => {
+                let data: Vec<T> = self_data
+                    .iter()
+                    .zip(other_data.iter())
+                    .map(|(a, b)| *a / *b)
+                    .collect();
+
+                Ok(Tensor {
+                    storage: TensorStorage::CPU(data),
+                    shape: self.shape.clone(),
+                    strides: self.strides.clone(),
+                })
+            }
+            #[cfg(feature = "cuda")]
+            _ => Err(TensorError::new("Expected CPU tensor")),
+        }
+    }
+
+    fn cpu_div_mut(&mut self, other: &Tensor<T>) -> Result<(), TensorError> {
+        match (&mut self.storage, &other.storage) {
+            (TensorStorage::CPU(self_data), TensorStorage::CPU(other_data)) => {
+                for (a, b) in self_data.iter_mut().zip(other_data.iter()) {
+                    *a = *a / *b;
+                }
+                Ok(())
+            }
+            #[cfg(feature = "cuda")]
+            _ => Err(TensorError::new("Device mismatch")),
+        }
+    }
+}
+
+// CUDA implementations for f32
+#[cfg(feature = "cuda")]
+impl Tensor<f32> {
+    fn cuda_add(&self, other: &Tensor<f32>) -> Result<Tensor<f32>, TensorError> {
+        use corrosive_cuda::{CudaBackend, kernels::ElementwiseKernels};
+
+        match (&self.storage, &other.storage) {
+            (
+                TensorStorage::CUDA { context, buffer: a_buf, device_idx },
+                TensorStorage::CUDA { buffer: b_buf, .. }
+            ) => {
+                let backend = CudaBackend::new(*device_idx)
+                    .map_err(|e| TensorError::new(&format!("CUDA backend error: {}", e)))?;
+
+                let n = self.size();
+                let mut c_buf = context.alloc_zeros::<f32>(n)
+                    .map_err(|e| TensorError::new(&format!("CUDA alloc failed: {}", e)))?;
+
+                ElementwiseKernels::add_f32(&backend, a_buf, b_buf, &mut c_buf, n)
+                    .map_err(|e| TensorError::new(&format!("CUDA kernel launch failed: {}", e)))?;
+
+                Ok(Tensor {
+                    storage: TensorStorage::CUDA {
+                        context: context.clone(),
+                        buffer: c_buf,
+                        device_idx: *device_idx,
+                    },
+                    shape: self.shape.clone(),
+                    strides: self.strides.clone(),
+                })
+            }
+            _ => Err(TensorError::new("Expected CUDA tensors")),
+        }
+    }
+
+    fn cuda_add_mut(&mut self, other: &Tensor<f32>) -> Result<(), TensorError> {
+        // For now, implement via add + replace
+        // TODO: Optimize with in-place kernel
+        let result = self.cuda_add(other)?;
+        self.storage = result.storage;
+        Ok(())
+    }
+
+    fn cuda_sub(&self, other: &Tensor<f32>) -> Result<Tensor<f32>, TensorError> {
+        use corrosive_cuda::{CudaBackend, kernels::ElementwiseKernels};
+
+        match (&self.storage, &other.storage) {
+            (
+                TensorStorage::CUDA { context, buffer: a_buf, device_idx },
+                TensorStorage::CUDA { buffer: b_buf, .. }
+            ) => {
+                let backend = CudaBackend::new(*device_idx)
+                    .map_err(|e| TensorError::new(&format!("CUDA backend error: {}", e)))?;
+
+                let n = self.size();
+                let mut c_buf = context.alloc_zeros::<f32>(n)
+                    .map_err(|e| TensorError::new(&format!("CUDA alloc failed: {}", e)))?;
+
+                ElementwiseKernels::sub_f32(&backend, a_buf, b_buf, &mut c_buf, n)
+                    .map_err(|e| TensorError::new(&format!("CUDA kernel launch failed: {}", e)))?;
+
+                Ok(Tensor {
+                    storage: TensorStorage::CUDA {
+                        context: context.clone(),
+                        buffer: c_buf,
+                        device_idx: *device_idx,
+                    },
+                    shape: self.shape.clone(),
+                    strides: self.strides.clone(),
+                })
+            }
+            _ => Err(TensorError::new("Expected CUDA tensors")),
+        }
+    }
+
+    fn cuda_sub_mut(&mut self, other: &Tensor<f32>) -> Result<(), TensorError> {
+        let result = self.cuda_sub(other)?;
+        self.storage = result.storage;
+        Ok(())
+    }
+
+    fn cuda_mul(&self, other: &Tensor<f32>) -> Result<Tensor<f32>, TensorError> {
+        use corrosive_cuda::{CudaBackend, kernels::ElementwiseKernels};
+
+        match (&self.storage, &other.storage) {
+            (
+                TensorStorage::CUDA { context, buffer: a_buf, device_idx },
+                TensorStorage::CUDA { buffer: b_buf, .. }
+            ) => {
+                let backend = CudaBackend::new(*device_idx)
+                    .map_err(|e| TensorError::new(&format!("CUDA backend error: {}", e)))?;
+
+                let n = self.size();
+                let mut c_buf = context.alloc_zeros::<f32>(n)
+                    .map_err(|e| TensorError::new(&format!("CUDA alloc failed: {}", e)))?;
+
+                ElementwiseKernels::mul_f32(&backend, a_buf, b_buf, &mut c_buf, n)
+                    .map_err(|e| TensorError::new(&format!("CUDA kernel launch failed: {}", e)))?;
+
+                Ok(Tensor {
+                    storage: TensorStorage::CUDA {
+                        context: context.clone(),
+                        buffer: c_buf,
+                        device_idx: *device_idx,
+                    },
+                    shape: self.shape.clone(),
+                    strides: self.strides.clone(),
+                })
+            }
+            _ => Err(TensorError::new("Expected CUDA tensors")),
+        }
+    }
+
+    fn cuda_mul_mut(&mut self, other: &Tensor<f32>) -> Result<(), TensorError> {
+        let result = self.cuda_mul(other)?;
+        self.storage = result.storage;
+        Ok(())
+    }
+
+    fn cuda_div(&self, other: &Tensor<f32>) -> Result<Tensor<f32>, TensorError> {
+        use corrosive_cuda::{CudaBackend, kernels::ElementwiseKernels};
+
+        match (&self.storage, &other.storage) {
+            (
+                TensorStorage::CUDA { context, buffer: a_buf, device_idx },
+                TensorStorage::CUDA { buffer: b_buf, .. }
+            ) => {
+                let backend = CudaBackend::new(*device_idx)
+                    .map_err(|e| TensorError::new(&format!("CUDA backend error: {}", e)))?;
+
+                let n = self.size();
+                let mut c_buf = context.alloc_zeros::<f32>(n)
+                    .map_err(|e| TensorError::new(&format!("CUDA alloc failed: {}", e)))?;
+
+                ElementwiseKernels::div_f32(&backend, a_buf, b_buf, &mut c_buf, n)
+                    .map_err(|e| TensorError::new(&format!("CUDA kernel launch failed: {}", e)))?;
+
+                Ok(Tensor {
+                    storage: TensorStorage::CUDA {
+                        context: context.clone(),
+                        buffer: c_buf,
+                        device_idx: *device_idx,
+                    },
+                    shape: self.shape.clone(),
+                    strides: self.strides.clone(),
+                })
+            }
+            _ => Err(TensorError::new("Expected CUDA tensors")),
+        }
+    }
+
+    fn cuda_div_mut(&mut self, other: &Tensor<f32>) -> Result<(), TensorError> {
+        let result = self.cuda_div(other)?;
+        self.storage = result.storage;
+        Ok(())
+    }
+}
+
+// CUDA implementations for f64
+#[cfg(feature = "cuda")]
+impl Tensor<f64> {
+    fn cuda_add(&self, other: &Tensor<f64>) -> Result<Tensor<f64>, TensorError> {
+        use corrosive_cuda::{CudaBackend, kernels::ElementwiseKernels};
+
+        match (&self.storage, &other.storage) {
+            (
+                TensorStorage::CUDA { context, buffer: a_buf, device_idx },
+                TensorStorage::CUDA { buffer: b_buf, .. }
+            ) => {
+                let backend = CudaBackend::new(*device_idx)
+                    .map_err(|e| TensorError::new(&format!("CUDA backend error: {}", e)))?;
+
+                let n = self.size();
+                let mut c_buf = context.alloc_zeros::<f64>(n)
+                    .map_err(|e| TensorError::new(&format!("CUDA alloc failed: {}", e)))?;
+
+                ElementwiseKernels::add_f64(&backend, a_buf, b_buf, &mut c_buf, n)
+                    .map_err(|e| TensorError::new(&format!("CUDA kernel launch failed: {}", e)))?;
+
+                Ok(Tensor {
+                    storage: TensorStorage::CUDA {
+                        context: context.clone(),
+                        buffer: c_buf,
+                        device_idx: *device_idx,
+                    },
+                    shape: self.shape.clone(),
+                    strides: self.strides.clone(),
+                })
+            }
+            _ => Err(TensorError::new("Expected CUDA tensors")),
+        }
+    }
+
+    fn cuda_add_mut(&mut self, other: &Tensor<f64>) -> Result<(), TensorError> {
+        let result = self.cuda_add(other)?;
+        self.storage = result.storage;
+        Ok(())
+    }
+
+    fn cuda_sub(&self, other: &Tensor<f64>) -> Result<Tensor<f64>, TensorError> {
+        use corrosive_cuda::{CudaBackend, kernels::ElementwiseKernels};
+
+        match (&self.storage, &other.storage) {
+            (
+                TensorStorage::CUDA { context, buffer: a_buf, device_idx },
+                TensorStorage::CUDA { buffer: b_buf, .. }
+            ) => {
+                let backend = CudaBackend::new(*device_idx)
+                    .map_err(|e| TensorError::new(&format!("CUDA backend error: {}", e)))?;
+
+                let n = self.size();
+                let mut c_buf = context.alloc_zeros::<f64>(n)
+                    .map_err(|e| TensorError::new(&format!("CUDA alloc failed: {}", e)))?;
+
+                ElementwiseKernels::sub_f64(&backend, a_buf, b_buf, &mut c_buf, n)
+                    .map_err(|e| TensorError::new(&format!("CUDA kernel launch failed: {}", e)))?;
+
+                Ok(Tensor {
+                    storage: TensorStorage::CUDA {
+                        context: context.clone(),
+                        buffer: c_buf,
+                        device_idx: *device_idx,
+                    },
+                    shape: self.shape.clone(),
+                    strides: self.strides.clone(),
+                })
+            }
+            _ => Err(TensorError::new("Expected CUDA tensors")),
+        }
+    }
+
+    fn cuda_sub_mut(&mut self, other: &Tensor<f64>) -> Result<(), TensorError> {
+        let result = self.cuda_sub(other)?;
+        self.storage = result.storage;
+        Ok(())
+    }
+
+    fn cuda_mul(&self, other: &Tensor<f64>) -> Result<Tensor<f64>, TensorError> {
+        use corrosive_cuda::{CudaBackend, kernels::ElementwiseKernels};
+
+        match (&self.storage, &other.storage) {
+            (
+                TensorStorage::CUDA { context, buffer: a_buf, device_idx },
+                TensorStorage::CUDA { buffer: b_buf, .. }
+            ) => {
+                let backend = CudaBackend::new(*device_idx)
+                    .map_err(|e| TensorError::new(&format!("CUDA backend error: {}", e)))?;
+
+                let n = self.size();
+                let mut c_buf = context.alloc_zeros::<f64>(n)
+                    .map_err(|e| TensorError::new(&format!("CUDA alloc failed: {}", e)))?;
+
+                ElementwiseKernels::mul_f64(&backend, a_buf, b_buf, &mut c_buf, n)
+                    .map_err(|e| TensorError::new(&format!("CUDA kernel launch failed: {}", e)))?;
+
+                Ok(Tensor {
+                    storage: TensorStorage::CUDA {
+                        context: context.clone(),
+                        buffer: c_buf,
+                        device_idx: *device_idx,
+                    },
+                    shape: self.shape.clone(),
+                    strides: self.strides.clone(),
+                })
+            }
+            _ => Err(TensorError::new("Expected CUDA tensors")),
+        }
+    }
+
+    fn cuda_mul_mut(&mut self, other: &Tensor<f64>) -> Result<(), TensorError> {
+        let result = self.cuda_mul(other)?;
+        self.storage = result.storage;
+        Ok(())
+    }
+
+    fn cuda_div(&self, other: &Tensor<f64>) -> Result<Tensor<f64>, TensorError> {
+        use corrosive_cuda::{CudaBackend, kernels::ElementwiseKernels};
+
+        match (&self.storage, &other.storage) {
+            (
+                TensorStorage::CUDA { context, buffer: a_buf, device_idx },
+                TensorStorage::CUDA { buffer: b_buf, .. }
+            ) => {
+                let backend = CudaBackend::new(*device_idx)
+                    .map_err(|e| TensorError::new(&format!("CUDA backend error: {}", e)))?;
+
+                let n = self.size();
+                let mut c_buf = context.alloc_zeros::<f64>(n)
+                    .map_err(|e| TensorError::new(&format!("CUDA alloc failed: {}", e)))?;
+
+                ElementwiseKernels::div_f64(&backend, a_buf, b_buf, &mut c_buf, n)
+                    .map_err(|e| TensorError::new(&format!("CUDA kernel launch failed: {}", e)))?;
+
+                Ok(Tensor {
+                    storage: TensorStorage::CUDA {
+                        context: context.clone(),
+                        buffer: c_buf,
+                        device_idx: *device_idx,
+                    },
+                    shape: self.shape.clone(),
+                    strides: self.strides.clone(),
+                })
+            }
+            _ => Err(TensorError::new("Expected CUDA tensors")),
+        }
+    }
+
+    fn cuda_div_mut(&mut self, other: &Tensor<f64>) -> Result<(), TensorError> {
+        let result = self.cuda_div(other)?;
+        self.storage = result.storage;
         Ok(())
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::tensor::{Device, Tensor, TensorArithmetic, TensorCore, TensorStorage};
+    use crate::tensor::{Device, Tensor, TensorArithmetic, TensorCore, TensorInit};
 
     #[test]
     fn test_element_wise_addition() {
