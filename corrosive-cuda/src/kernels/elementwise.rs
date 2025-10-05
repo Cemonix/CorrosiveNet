@@ -1,6 +1,8 @@
 use cudarc::driver::CudaSlice;
 use crate::cuda::{CudaBackend, CudaError};
-use super::utils::{launch_binary_elementwise, launch_unary_elementwise, launch_scalar_elementwise};
+use super::utils::{
+    launch_binary_elementwise, launch_unary_elementwise, launch_scalar_elementwise, launch_clip_elementwise
+};
 
 /// Elementwise operation kernel launchers
 ///
@@ -481,6 +483,300 @@ impl ElementwiseKernels {
             "scalar_pow_f64",
             include_str!("../../kernels/elementwise/scalar.cu"),
             input, scalar, output, n
+        )
+    }
+
+    // ==================== Comparison Operations ====================
+
+    /// Greater than comparison: output = (input > threshold) ? 1 : 0
+    pub fn greater_than_f32(
+        backend: &CudaBackend,
+        input: &CudaSlice<f32>,
+        threshold: f32,
+        output: &mut CudaSlice<f32>,
+        n: usize,
+    ) -> Result<(), CudaError> {
+        launch_scalar_elementwise(
+            backend,
+            "comparison_gt_f32",
+            include_str!("../../kernels/elementwise/comparison.cu"),
+            input, threshold, output, n
+        )
+    }
+
+    /// Greater than comparison: output = (input > threshold) ? 1 : 0 (f64)
+    pub fn greater_than_f64(
+        backend: &CudaBackend,
+        input: &CudaSlice<f64>,
+        threshold: f64,
+        output: &mut CudaSlice<f64>,
+        n: usize,
+    ) -> Result<(), CudaError> {
+        launch_scalar_elementwise(
+            backend,
+            "comparison_gt_f64",
+            include_str!("../../kernels/elementwise/comparison.cu"),
+            input, threshold, output, n
+        )
+    }
+
+    /// Greater than or equal comparison: output = (input >= threshold) ? 1 : 0
+    pub fn greater_equal_f32(
+        backend: &CudaBackend,
+        input: &CudaSlice<f32>,
+        threshold: f32,
+        output: &mut CudaSlice<f32>,
+        n: usize,
+    ) -> Result<(), CudaError> {
+        launch_scalar_elementwise(
+            backend,
+            "comparison_ge_f32",
+            include_str!("../../kernels/elementwise/comparison.cu"),
+            input, threshold, output, n
+        )
+    }
+
+    /// Greater than or equal comparison: output = (input >= threshold) ? 1 : 0 (f64)
+    pub fn greater_equal_f64(
+        backend: &CudaBackend,
+        input: &CudaSlice<f64>,
+        threshold: f64,
+        output: &mut CudaSlice<f64>,
+        n: usize,
+    ) -> Result<(), CudaError> {
+        launch_scalar_elementwise(
+            backend,
+            "comparison_ge_f64",
+            include_str!("../../kernels/elementwise/comparison.cu"),
+            input, threshold, output, n
+        )
+    }
+
+    /// Less than comparison: output = (input < threshold) ? 1 : 0
+    pub fn less_than_f32(
+        backend: &CudaBackend,
+        input: &CudaSlice<f32>,
+        threshold: f32,
+        output: &mut CudaSlice<f32>,
+        n: usize,
+    ) -> Result<(), CudaError> {
+        launch_scalar_elementwise(
+            backend,
+            "comparison_lt_f32",
+            include_str!("../../kernels/elementwise/comparison.cu"),
+            input, threshold, output, n
+        )
+    }
+
+    /// Less than comparison: output = (input < threshold) ? 1 : 0 (f64)
+    pub fn less_than_f64(
+        backend: &CudaBackend,
+        input: &CudaSlice<f64>,
+        threshold: f64,
+        output: &mut CudaSlice<f64>,
+        n: usize,
+    ) -> Result<(), CudaError> {
+        launch_scalar_elementwise(
+            backend,
+            "comparison_lt_f64",
+            include_str!("../../kernels/elementwise/comparison.cu"),
+            input, threshold, output, n
+        )
+    }
+
+    /// Less than or equal comparison: output = (input <= threshold) ? 1 : 0
+    pub fn less_equal_f32(
+        backend: &CudaBackend,
+        input: &CudaSlice<f32>,
+        threshold: f32,
+        output: &mut CudaSlice<f32>,
+        n: usize,
+    ) -> Result<(), CudaError> {
+        launch_scalar_elementwise(
+            backend,
+            "comparison_le_f32",
+            include_str!("../../kernels/elementwise/comparison.cu"),
+            input, threshold, output, n
+        )
+    }
+
+    /// Less than or equal comparison: output = (input <= threshold) ? 1 : 0 (f64)
+    pub fn less_equal_f64(
+        backend: &CudaBackend,
+        input: &CudaSlice<f64>,
+        threshold: f64,
+        output: &mut CudaSlice<f64>,
+        n: usize,
+    ) -> Result<(), CudaError> {
+        launch_scalar_elementwise(
+            backend,
+            "comparison_le_f64",
+            include_str!("../../kernels/elementwise/comparison.cu"),
+            input, threshold, output, n
+        )
+    }
+
+    /// Equal comparison: output = (input == threshold) ? 1 : 0
+    pub fn equal_f32(
+        backend: &CudaBackend,
+        input: &CudaSlice<f32>,
+        threshold: f32,
+        output: &mut CudaSlice<f32>,
+        n: usize,
+    ) -> Result<(), CudaError> {
+        launch_scalar_elementwise(
+            backend,
+            "comparison_eq_f32",
+            include_str!("../../kernels/elementwise/comparison.cu"),
+            input, threshold, output, n
+        )
+    }
+
+    /// Equal comparison: output = (input == threshold) ? 1 : 0 (f64)
+    pub fn equal_f64(
+        backend: &CudaBackend,
+        input: &CudaSlice<f64>,
+        threshold: f64,
+        output: &mut CudaSlice<f64>,
+        n: usize,
+    ) -> Result<(), CudaError> {
+        launch_scalar_elementwise(
+            backend,
+            "comparison_eq_f64",
+            include_str!("../../kernels/elementwise/comparison.cu"),
+            input, threshold, output, n
+        )
+    }
+
+    /// Not equal comparison: output = (input != threshold) ? 1 : 0
+    pub fn not_equal_f32(
+        backend: &CudaBackend,
+        input: &CudaSlice<f32>,
+        threshold: f32,
+        output: &mut CudaSlice<f32>,
+        n: usize,
+    ) -> Result<(), CudaError> {
+        launch_scalar_elementwise(
+            backend,
+            "comparison_ne_f32",
+            include_str!("../../kernels/elementwise/comparison.cu"),
+            input, threshold, output, n
+        )
+    }
+
+    /// Not equal comparison: output = (input != threshold) ? 1 : 0 (f64)
+    pub fn not_equal_f64(
+        backend: &CudaBackend,
+        input: &CudaSlice<f64>,
+        threshold: f64,
+        output: &mut CudaSlice<f64>,
+        n: usize,
+    ) -> Result<(), CudaError> {
+        launch_scalar_elementwise(
+            backend,
+            "comparison_ne_f64",
+            include_str!("../../kernels/elementwise/comparison.cu"),
+            input, threshold, output, n
+        )
+    }
+
+    // ==================== Clipping Operations ====================
+
+    /// Clip maximum: output = min(input, threshold)
+    pub fn clip_max_f32(
+        backend: &CudaBackend,
+        input: &CudaSlice<f32>,
+        threshold: f32,
+        output: &mut CudaSlice<f32>,
+        n: usize,
+    ) -> Result<(), CudaError> {
+        launch_scalar_elementwise(
+            backend,
+            "clip_max_f32",
+            include_str!("../../kernels/elementwise/comparison.cu"),
+            input, threshold, output, n
+        )
+    }
+
+    /// Clip maximum: output = min(input, threshold) (f64)
+    pub fn clip_max_f64(
+        backend: &CudaBackend,
+        input: &CudaSlice<f64>,
+        threshold: f64,
+        output: &mut CudaSlice<f64>,
+        n: usize,
+    ) -> Result<(), CudaError> {
+        launch_scalar_elementwise(
+            backend,
+            "clip_max_f64",
+            include_str!("../../kernels/elementwise/comparison.cu"),
+            input, threshold, output, n
+        )
+    }
+
+    /// Clip minimum: output = max(input, threshold)
+    pub fn clip_min_f32(
+        backend: &CudaBackend,
+        input: &CudaSlice<f32>,
+        threshold: f32,
+        output: &mut CudaSlice<f32>,
+        n: usize,
+    ) -> Result<(), CudaError> {
+        launch_scalar_elementwise(
+            backend,
+            "clip_min_f32",
+            include_str!("../../kernels/elementwise/comparison.cu"),
+            input, threshold, output, n
+        )
+    }
+
+    /// Clip minimum: output = max(input, threshold) (f64)
+    pub fn clip_min_f64(
+        backend: &CudaBackend,
+        input: &CudaSlice<f64>,
+        threshold: f64,
+        output: &mut CudaSlice<f64>,
+        n: usize,
+    ) -> Result<(), CudaError> {
+        launch_scalar_elementwise(
+            backend,
+            "clip_min_f64",
+            include_str!("../../kernels/elementwise/comparison.cu"),
+            input, threshold, output, n
+        )
+    }
+
+    /// Clip to range: output = max(min_val, min(input, max_val))
+    pub fn clip_f32(
+        backend: &CudaBackend,
+        input: &CudaSlice<f32>,
+        min_val: f32,
+        max_val: f32,
+        output: &mut CudaSlice<f32>,
+        n: usize,
+    ) -> Result<(), CudaError> {
+        launch_clip_elementwise(
+            backend,
+            "clip_f32",
+            include_str!("../../kernels/elementwise/comparison.cu"),
+            input, min_val, max_val, output, n
+        )
+    }
+
+    /// Clip to range: output = max(min_val, min(input, max_val)) (f64)
+    pub fn clip_f64(
+        backend: &CudaBackend,
+        input: &CudaSlice<f64>,
+        min_val: f64,
+        max_val: f64,
+        output: &mut CudaSlice<f64>,
+        n: usize,
+    ) -> Result<(), CudaError> {
+        launch_clip_elementwise(
+            backend,
+            "clip_f64",
+            include_str!("../../kernels/elementwise/comparison.cu"),
+            input, min_val, max_val, output, n
         )
     }
 }
